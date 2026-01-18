@@ -96,6 +96,7 @@ export interface MatchResult {
   // Battleship-specific
   placementsA?: ShipPlacement[];
   placementsB?: ShipPlacement[];
+  moveOwnership?: (Player | null)[]; // Track which player made each move in Battleship
   finalBoardA?: BSCell[]; // Final board state for Player A
   finalBoardB?: BSCell[]; // Final board state for Player B
 }
