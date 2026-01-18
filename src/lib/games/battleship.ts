@@ -299,6 +299,10 @@ export function applyBSMove(
   const totalOpponentHealth = Object.values(opponentHealth).reduce((sum, health) => sum + health, 0);
   const isWin = totalOpponentHealth === 0;
 
+  // Update moveOwnership to track which player made this move
+  const newMoveOwnership = [...(state.moveOwnership || Array(TOTAL_CELLS).fill(null))] as (Player | null)[];
+  newMoveOwnership[move] = player;
+
   const newState: GameState = {
     ...state,
     board: player === 'A' ? newBoardB : newBoardA, // Show the board that was just attacked
@@ -309,6 +313,7 @@ export function applyBSMove(
     firedB: newFiredB,
     shipHealthA: newShipHealthA,
     shipHealthB: newShipHealthB,
+    moveOwnership: newMoveOwnership,
     boardA: newBoardA,
     boardB: newBoardB,
   };
