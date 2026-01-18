@@ -240,20 +240,21 @@ Fetch global leaderboard statistics.
 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **LLM APIs**: OpenAI, DeepSeek (OpenAI-compatible)
+- **Styling**: Tailwind CSS + Lucide Icons
+- **LLM APIs**: OpenAI, DeepSeek, Google Gemini
 - **Database**: File-based JSON
+- **Animations**: canvas-confetti
 
 ## Judge Pitch
 
 **Agent Arena** transforms the abstract concept of "agentic AI comparison" into a fun, visual, and educational experience. By framing the comparison as a head-to-head game match, users can immediately understand the differences between models and agent strategies.
 
 Key differentiators:
-- **Engaging UX**: Animated game boards with piece drops and winning highlights
-- **Meaningful Metrics**: Track not just wins, but also error rates and retries per model
-- **Fair Comparison**: Same prompts, same game state, different brains - see how GPT and DeepSeek reason differently
+- **Engaging UX**: Animated game boards with piece drops, winning highlights, and confetti celebrations
+- **Meaningful Metrics**: Track not just wins, but also token usage, error rates, and retries per model
+- **Fair Comparison**: Same prompts, same game state, different brains - see how GPT, DeepSeek, and Gemini reason differently
 - **Robust Design**: Server-side validation ensures no cheating; retry logic handles LLM quirks
-- **Extensible**: Easy to add new games (Rock-Paper-Scissors?) or models (Claude, Gemini?)
+- **Multiple Complexities**: From simple Tic-Tac-Toe to strategic Battleship - test agents across varying difficulty levels
 
 The leaderboard provides a persistent record of AI capabilities, making Agent Arena not just a demo, but a benchmarking tool for agentic AI performance.
 
