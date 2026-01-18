@@ -24,6 +24,7 @@ import { GlobalStats } from '@/components/GlobalStats';
 import { GameControls } from '@/components/GameControls';
 import { ReplayControls } from '@/components/ReplayControls';
 import { LiveOutput, LiveMove } from '@/components/LiveOutput';
+import { LLMSettings } from '@/components/LLMSettings';
 import { PROVIDER_LABELS, getPlayerStyles } from '@/lib/ui/providerStyles';
 
 const INITIAL_TTT_BOARD: TTTCell[] = Array(9).fill(null);
@@ -528,6 +529,8 @@ export default function Home() {
               }}
               isRunning={session.isRunning}
             />
+
+            <LLMSettings />
           </div>
 
           {/* Center - Game Board */}

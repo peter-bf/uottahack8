@@ -2,7 +2,7 @@
 
 import { GlobalStats as GlobalStatsType, MatchResult } from '@/types';
 import { Trophy, Zap } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const MODEL_COLORS: Record<string, string> = {
   gpt: 'text-emerald-400',
@@ -35,6 +35,9 @@ interface GlobalStatsProps {
 export function GlobalStats({ stats }: GlobalStatsProps) {
   const [recentMatches, setRecentMatches] = useState<MatchResult[]>([]);
   const [newMatchIds, setNewMatchIds] = useState<Set<string>>(new Set());
+  const [allMatches, setAllMatches] = useState<MatchResult[]>([]);
+  const [displayCount, setDisplayCount] = useState(2);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load recent matches from data
@@ -42,6 +45,10 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
       try {
         const response = await fetch('/api/stats');
         const data = await response.json();
+        
+        // Store all matches for infinite scroll
+        setAllMatches(data.recentMatches);
+        
         const recentData = data.recentMatches.slice(0, 8);
         
         // Track new matches for animation
@@ -70,6 +77,23 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
     const interval = setInterval(loadMatches, 2000);
     return () => clearInterval(interval);
   }, [recentMatches]);
+
+  // Handle scroll for infinite loading
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // When scrolled near bottom, load more
+      if (scrollHeight - scrollTop - clientHeight < 50) {
+        setDisplayCount(prev => Math.min(prev + 5, allMatches.length));
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [allMatches.length]);
 
   const totals = {
     matches: stats.ttt.matchesPlayed + stats.c4.matchesPlayed + stats.bs.matchesPlayed,
@@ -286,7 +310,7 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
 
       {/* Battle Log */}
       {recentMatches.length > 0 && (
-        <div className="bg-card rounded-lg border border-border">
+        <div className="bg-card rounded-lg border border-border flex flex-col max-h-64">
           <div className="p-4 border-b border-border">
             <h2 className="text-sm font-medium flex items-center gap-2">
               <Zap className="w-4 h-4" />
@@ -294,8 +318,11 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
             </h2>
           </div>
 
-          <div className="divide-y divide-border">
-            {recentMatches.map((match) => {
+          <div
+            ref={scrollContainerRef}
+            className="divide-y divide-border overflow-y-auto flex-1"
+          >
+            {allMatches.slice(0, displayCount).map((match) => {
               const gameIcon = GAME_ICONS[match.gameType];
               const gameName = GAME_NAMES[match.gameType];
               const isNewMatch = newMatchIds.has(match.id);
@@ -316,12 +343,11 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-lg">{gameIcon}</span>
-                      <div className="truncate">
-                        {/* <span className="text-muted-foreground mx-1">Draw between </span> */}
+                      <div className="truncate text-sm">
                         <span className={`font-semibold ${color1}`}>{model1}</span>
-                        <span className="text-muted-foreground mx-1"> and </span>
+                        <span className="text-muted-foreground mx-1">drew with</span>
                         <span className={`font-semibold ${color2}`}>{model2}</span>
-                        <span className="text-muted-foreground ml-1">drew at {gameName}</span>
+                        <span className="text-muted-foreground ml-1">at {gameName}</span>
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground whitespace-nowrap ml-2">
@@ -345,7 +371,7 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-lg">{gameIcon}</span>
-                      <div className="truncate">
+                      <div className="truncate text-sm">
                         <span className={`font-semibold ${winnerColor}`}>{winnerName}</span>
                         <span className="text-muted-foreground mx-1">won against</span>
                         <span className={`font-semibold ${MODEL_COLORS[loserModel]}`}>{loserName}</span>
@@ -360,6 +386,13 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
               }
             })}
           </div>
+
+          {/* Loading indicator */}
+          {displayCount < allMatches.length && (
+            <div className="p-2 text-center text-xs text-muted-foreground/50 border-t border-border">
+              Scroll down for more matches
+            </div>
+          )}
         </div>
       )}
     </div>

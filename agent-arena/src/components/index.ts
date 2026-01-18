@@ -7,3 +7,4 @@ export { GlobalStats } from './GlobalStats';
 export { GameControls } from './GameControls';
 export { ReplayControls } from './ReplayControls';
 export { LiveOutput } from './LiveOutput';
+export { LLMSettings } from './LLMSettings';
