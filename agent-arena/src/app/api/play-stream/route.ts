@@ -208,6 +208,10 @@ export async function POST(request: NextRequest) {
             durationMs: moveDurationMs,
             retries: moveRetries,
             hadError: moveHadError,
+            // Battleship-specific
+            placementsA: gameType === 'bs' ? applyResult.newState.placementsA : undefined,
+            placementsB: gameType === 'bs' ? applyResult.newState.placementsB : undefined,
+            moveOwnership: gameType === 'bs' ? applyResult.newState.moveOwnership : undefined,
           });
 
           state = applyResult.newState;
@@ -217,12 +221,21 @@ export async function POST(request: NextRequest) {
         const endTime = Date.now();
 
         // Determine winner
-        let winner = state.winner;
+        let winner: 'A' | 'B' | 'draw' = state.winner || 'draw';
         if (forfeitedBy) {
           winner = forfeitedBy === 'A' ? 'B' : 'A';
-        }
-        if (!winner) {
-          winner = 'draw';
+        } else if (!state.winner) {
+          // Battleship should never draw - if no winner and game ended, check ship health
+          if (gameType === 'bs') {
+            // For battleship, check if all ships are sunk for either player
+            const totalHealthA = Object.values(state.shipHealthA || {}).reduce((sum, h) => sum + h, 0);
+            const totalHealthB = Object.values(state.shipHealthB || {}).reduce((sum, h) => sum + h, 0);
+            if (totalHealthA === 0) winner = 'B';
+            else if (totalHealthB === 0) winner = 'A';
+            else winner = 'draw'; // Fallback, but shouldn't happen
+          } else {
+            winner = 'draw';
+          }
         }
 
         let winnerModel = null;
@@ -249,6 +262,10 @@ export async function POST(request: NextRequest) {
           },
           winLine: state.winLine,
           finalBoard: state.board,
+          // Battleship-specific
+          placementsA: gameType === 'bs' ? state.placementsA : undefined,
+          placementsB: gameType === 'bs' ? state.placementsB : undefined,
+          moveOwnership: gameType === 'bs' ? state.moveOwnership : undefined,
         };
 
         // Save match

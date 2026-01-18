@@ -56,33 +56,90 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
             <div className="grid grid-cols-3 gap-4 text-xs">
               <div>
                 <div className="text-muted-foreground mb-2">Tic-Tac-Toe</div>
-                <div className="flex gap-2">
-                  <span className="text-emerald-400">{stats.ttt.winsByModel.gpt}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-sky-400">{stats.ttt.winsByModel.deepseek}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-amber-400">{stats.ttt.winsByModel.gemini}</span>
-                </div>
+                {stats.ttt.matchesPlayed > 0 ? (
+                  <div className="space-y-1">
+                    <div className="flex gap-2 items-center">
+                      <span className="text-emerald-400">{stats.ttt.winsByModel.gpt}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-sky-400">{stats.ttt.winsByModel.deepseek}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-amber-400">{stats.ttt.winsByModel.gemini}</span>
+                    </div>
+                    <div className="flex gap-2 items-center text-muted-foreground/70">
+                      <span className="text-emerald-400/70">
+                        {((stats.ttt.winsByModel.gpt / stats.ttt.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                      <span>/</span>
+                      <span className="text-sky-400/70">
+                        {((stats.ttt.winsByModel.deepseek / stats.ttt.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                      <span>/</span>
+                      <span className="text-amber-400/70">
+                        {((stats.ttt.winsByModel.gemini / stats.ttt.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground/50">No matches</div>
+                )}
               </div>
               <div>
                 <div className="text-muted-foreground mb-2">Connect Four</div>
-                <div className="flex gap-2">
-                  <span className="text-emerald-400">{stats.c4.winsByModel.gpt}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-sky-400">{stats.c4.winsByModel.deepseek}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-amber-400">{stats.c4.winsByModel.gemini}</span>
-                </div>
+                {stats.c4.matchesPlayed > 0 ? (
+                  <div className="space-y-1">
+                    <div className="flex gap-2 items-center">
+                      <span className="text-emerald-400">{stats.c4.winsByModel.gpt}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-sky-400">{stats.c4.winsByModel.deepseek}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-amber-400">{stats.c4.winsByModel.gemini}</span>
+                    </div>
+                    <div className="flex gap-2 items-center text-muted-foreground/70">
+                      <span className="text-emerald-400/70">
+                        {((stats.c4.winsByModel.gpt / stats.c4.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                      <span>/</span>
+                      <span className="text-sky-400/70">
+                        {((stats.c4.winsByModel.deepseek / stats.c4.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                      <span>/</span>
+                      <span className="text-amber-400/70">
+                        {((stats.c4.winsByModel.gemini / stats.c4.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground/50">No matches</div>
+                )}
               </div>
               <div>
                 <div className="text-muted-foreground mb-2">Battleship</div>
-                <div className="flex gap-2">
-                  <span className="text-emerald-400">{stats.bs.winsByModel.gpt}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-sky-400">{stats.bs.winsByModel.deepseek}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-amber-400">{stats.bs.winsByModel.gemini}</span>
-                </div>
+                {stats.bs.matchesPlayed > 0 ? (
+                  <div className="space-y-1">
+                    <div className="flex gap-2 items-center">
+                      <span className="text-emerald-400">{stats.bs.winsByModel.gpt}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-sky-400">{stats.bs.winsByModel.deepseek}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-amber-400">{stats.bs.winsByModel.gemini}</span>
+                    </div>
+                    <div className="flex gap-2 items-center text-muted-foreground/70">
+                      <span className="text-emerald-400/70">
+                        {((stats.bs.winsByModel.gpt / stats.bs.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                      <span>/</span>
+                      <span className="text-sky-400/70">
+                        {((stats.bs.winsByModel.deepseek / stats.bs.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                      <span>/</span>
+                      <span className="text-amber-400/70">
+                        {((stats.bs.winsByModel.gemini / stats.bs.matchesPlayed) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground/50">No matches</div>
+                )}
               </div>
             </div>
           </div>

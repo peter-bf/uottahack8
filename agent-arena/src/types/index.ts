@@ -37,6 +37,8 @@ export interface GameState {
   firedB?: Set<number>;
   shipHealthA?: Record<string, number>;
   shipHealthB?: Record<string, number>;
+  // Track which player made each move (for UI coloring)
+  moveOwnership?: (Player | null)[];
 }
 
 export interface ShipPlacement {
@@ -90,6 +92,10 @@ export interface MatchResult {
   };
   winLine: number[] | null;
   finalBoard: (TTTCell | C4Cell | BSCell)[];
+  // Battleship-specific
+  placementsA?: ShipPlacement[];
+  placementsB?: ShipPlacement[];
+  moveOwnership?: (Player | null)[];
 }
 
 export interface GlobalStats {

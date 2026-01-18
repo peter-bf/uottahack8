@@ -12,6 +12,8 @@ import {
   GPTModel,
   DeepSeekModel,
   GeminiModel,
+  ShipPlacement,
+  Player,
 } from '@/types';
 import { TicTacToeBoard } from '@/components/TicTacToeBoard';
 import { Connect4Board } from '@/components/Connect4Board';
@@ -43,6 +45,10 @@ interface GameSession {
   agentAModelVariant: GPTModel | DeepSeekModel | GeminiModel;
   agentBModel: ModelType;
   agentBModelVariant: GPTModel | DeepSeekModel | GeminiModel;
+  // Battleship-specific
+  placementsA?: ShipPlacement[];
+  placementsB?: ShipPlacement[];
+  moveOwnership?: (Player | null)[];
 }
 
 const createInitialSession = (gameType: GameType): GameSession => ({
@@ -293,6 +299,9 @@ export default function Home() {
           durationMs?: number;
           retries?: number;
           hadError?: boolean;
+          placementsA?: ShipPlacement[];
+          placementsB?: ShipPlacement[];
+          moveOwnership?: (Player | null)[];
         };
 
         const newMove: LiveMove = {
@@ -335,6 +344,10 @@ export default function Home() {
             liveMoves: [...prev[gameType].liveMoves, newMove],
             displayBoard: d.board,
             lastMoveIdx,
+            // Battleship-specific
+            placementsA: d.placementsA ?? prev[gameType].placementsA,
+            placementsB: d.placementsB ?? prev[gameType].placementsB,
+            moveOwnership: d.moveOwnership ?? prev[gameType].moveOwnership,
           },
         }));
         break;
@@ -561,6 +574,9 @@ export default function Home() {
                     isThinking={session.isRunning && session.currentThinking !== null}
                     agentAModel={session.agentAModel}
                     agentBModel={session.agentBModel}
+                    placementsA={session.matchResult?.placementsA ?? session.placementsA}
+                    placementsB={session.matchResult?.placementsB ?? session.placementsB}
+                    moveOwnership={session.matchResult?.moveOwnership ?? session.moveOwnership}
                   />
                 )}
               </div>

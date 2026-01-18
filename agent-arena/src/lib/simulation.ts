@@ -136,8 +136,19 @@ export async function runMatch(
   if (forfeitedBy) {
     winner = forfeitedBy === 'A' ? 'B' : 'A';
   }
-  if (!winner) {
+  // Battleship should never draw - if no winner and game ended, it's an error state
+  if (!winner && gameType !== 'bs') {
     winner = 'draw';
+  } else if (!winner && gameType === 'bs') {
+    // For battleship, if we reach here without a winner, something went wrong
+    // Check if all ships are sunk for either player
+    if (gameType === 'bs') {
+      const totalHealthA = Object.values(state.shipHealthA || {}).reduce((sum, h) => sum + h, 0);
+      const totalHealthB = Object.values(state.shipHealthB || {}).reduce((sum, h) => sum + h, 0);
+      if (totalHealthA === 0) winner = 'B';
+      else if (totalHealthB === 0) winner = 'A';
+      else winner = 'draw'; // Fallback, but shouldn't happen
+    }
   }
 
   // Determine winner model
@@ -165,5 +176,9 @@ export async function runMatch(
     },
     winLine: state.winLine,
     finalBoard: state.board,
+    // Battleship-specific
+    placementsA: gameType === 'bs' ? state.placementsA : undefined,
+    placementsB: gameType === 'bs' ? state.placementsB : undefined,
+    moveOwnership: gameType === 'bs' ? state.moveOwnership : undefined,
   };
 }

@@ -1,7 +1,8 @@
 'use client';
 
-import { BSCell, ModelType } from '@/types';
+import { BSCell, ModelType, ShipPlacement, Player } from '@/types';
 import { useEffect, useState } from 'react';
+import { getPlayerStyles } from '@/lib/ui/providerStyles';
 
 interface BattleshipBoardProps {
   board: BSCell[];
@@ -10,6 +11,9 @@ interface BattleshipBoardProps {
   isThinking: boolean;
   agentAModel: ModelType;
   agentBModel: ModelType;
+  placementsA?: ShipPlacement[];
+  placementsB?: ShipPlacement[];
+  moveOwnership?: (Player | null)[];
 }
 
 const BOARD_SIZE = 10;
@@ -26,6 +30,9 @@ export function BattleshipBoard({
   isThinking,
   agentAModel,
   agentBModel,
+  placementsA = [],
+  placementsB = [],
+  moveOwnership = [],
 }: BattleshipBoardProps) {
   const [animatingCell, setAnimatingCell] = useState<number | null>(null);
 
@@ -37,16 +44,71 @@ export function BattleshipBoard({
     }
   }, [lastMove]);
 
-  const getCellDisplay = (cell: BSCell) => {
+  const agentAStyle = getPlayerStyles(agentAModel, false);
+  const agentBStyle = getPlayerStyles(agentBModel, agentAModel === agentBModel);
+
+  // Check if a cell is part of a ship
+  const getShipAtCell = (index: number): { player: Player; ship: ShipPlacement } | null => {
+    for (const ship of placementsA) {
+      if (ship.cells.includes(index)) {
+        return { player: 'A', ship };
+      }
+    }
+    for (const ship of placementsB) {
+      if (ship.cells.includes(index)) {
+        return { player: 'B', ship };
+      }
+    }
+    return null;
+  };
+
+  const getCellDisplay = (cell: BSCell, index: number) => {
+    const shipInfo = getShipAtCell(index);
+    const moveOwner = moveOwnership[index];
+    
+    // Determine colors based on move owner
+    let moveColorClass = '';
+    if (moveOwner === 'A') {
+      moveColorClass = agentAStyle.text;
+    } else if (moveOwner === 'B') {
+      moveColorClass = agentBStyle.text;
+    }
+
+    // Determine ship background color
+    let shipBgClass = '';
+    if (shipInfo) {
+      shipBgClass = shipInfo.player === 'A' 
+        ? agentAStyle.bg.replace('/15', '/20')
+        : agentBStyle.bg.replace('/15', '/20');
+    }
+
     switch (cell) {
       case 'miss':
-        return { symbol: '○', className: 'text-blue-400' };
+        return { 
+          symbol: '○', 
+          className: moveColorClass || 'text-blue-400',
+          bgClass: shipBgClass,
+        };
       case 'hit':
-        return { symbol: '✕', className: 'text-red-500' };
+        return { 
+          symbol: '✕', 
+          className: moveColorClass || 'text-red-500',
+          bgClass: shipBgClass,
+        };
       case 'sunk':
-        return { symbol: '■', className: 'text-red-700' };
+        return { 
+          symbol: '■', 
+          className: moveColorClass || 'text-red-700',
+          bgClass: shipBgClass,
+        };
       default:
-        return { symbol: '·', className: 'text-muted-foreground/30' };
+        return { 
+          symbol: shipInfo ? '▢' : '·', 
+          className: shipInfo 
+            ? (shipInfo.player === 'A' ? agentAStyle.text : agentBStyle.text)
+            : 'text-muted-foreground/30',
+          bgClass: shipBgClass,
+        };
     }
   };
 
@@ -74,7 +136,7 @@ export function BattleshipBoard({
             {Array.from({ length: BOARD_SIZE }).map((_, col) => {
               const index = row * BOARD_SIZE + col;
               const cell = board[index];
-              const { symbol, className } = getCellDisplay(cell);
+              const { symbol, className, bgClass } = getCellDisplay(cell, index);
               const isLastMove = lastMove === index;
               const isAnimating = animatingCell === index;
 
@@ -82,8 +144,9 @@ export function BattleshipBoard({
                 <div
                   key={index}
                   className={`
-                    w-8 h-8 bg-card rounded flex items-center justify-center
+                    w-8 h-8 rounded flex items-center justify-center
                     text-lg font-bold transition-all duration-200
+                    ${bgClass || 'bg-card'}
                     ${isLastMove ? 'ring-2 ring-white/50' : ''}
                     ${isAnimating ? 'animate-pulse' : ''}
                   `}

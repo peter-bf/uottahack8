@@ -93,11 +93,21 @@ function generatePlacements(seed: string | number): ShipPlacement[] {
     while (!placed && attempts < maxAttempts) {
       attempts++;
       const horizontal = rng.nextInt(2) === 0;
-      const startRow = rng.nextInt(BOARD_SIZE);
-      const startCol = rng.nextInt(BOARD_SIZE);
+      
+      // Ensure the ship fits within bounds
+      const maxRow = horizontal ? BOARD_SIZE - 1 : BOARD_SIZE - ship.size;
+      const maxCol = horizontal ? BOARD_SIZE - ship.size : BOARD_SIZE - 1;
+      
+      if (maxRow < 0 || maxCol < 0) {
+        // Ship is too large for the board (shouldn't happen with our fleet)
+        throw new Error(`Ship ${ship.name} (size ${ship.size}) is too large for board`);
+      }
+      
+      const startRow = rng.nextInt(maxRow + 1);
+      const startCol = rng.nextInt(maxCol + 1);
 
       const cells = getShipCells(startRow, startCol, ship.size, horizontal);
-      if (canPlaceShip(cells, occupied)) {
+      if (cells.length > 0 && canPlaceShip(cells, occupied)) {
         placements.push({ name: ship.name, size: ship.size, cells });
         cells.forEach(cell => occupied.add(cell));
         placed = true;
@@ -113,6 +123,17 @@ function generatePlacements(seed: string | number): ShipPlacement[] {
   const totalCells = placements.reduce((sum, p) => sum + p.cells.length, 0);
   if (totalCells !== TOTAL_SHIP_CELLS) {
     throw new Error(`Invalid placement: expected ${TOTAL_SHIP_CELLS} cells, got ${totalCells}`);
+  }
+
+  // Verify no overlaps
+  const allCells = new Set<number>();
+  for (const placement of placements) {
+    for (const cell of placement.cells) {
+      if (allCells.has(cell)) {
+        throw new Error(`Overlapping ships detected at cell ${cell}`);
+      }
+      allCells.add(cell);
+    }
   }
 
   return placements;
@@ -144,6 +165,7 @@ export function initBSState(seed: string | number = Date.now()): GameState {
     firedB: new Set<number>(),
     shipHealthA,
     shipHealthB,
+    moveOwnership: Array(TOTAL_CELLS).fill(null) as (Player | null)[],
   };
 }
 
@@ -193,7 +215,11 @@ export function applyBSMove(
 
   // Get opponent's placements and health
   const opponentPlacements = player === 'A' ? state.placementsB! : state.placementsA!;
-  const opponentHealth = player === 'A' ? state.shipHealthB! : state.shipHealthA!;
+  
+  // Use the NEW health objects, not the old ones
+  const newShipHealthA = { ...state.shipHealthA! };
+  const newShipHealthB = { ...state.shipHealthB! };
+  const opponentHealth = player === 'A' ? newShipHealthB : newShipHealthA;
 
   // Check if hit
   const hitShip = findShipAtCell(opponentPlacements, move);
@@ -203,8 +229,7 @@ export function applyBSMove(
   const newBoard = [...state.board] as BSCell[];
   const newFiredA = new Set(state.firedA!);
   const newFiredB = new Set(state.firedB!);
-  const newShipHealthA = { ...state.shipHealthA! };
-  const newShipHealthB = { ...state.shipHealthB! };
+  const newMoveOwnership = [...(state.moveOwnership || Array(TOTAL_CELLS).fill(null))] as (Player | null)[];
 
   let outcome: BSMoveOutcome;
   let sunkShipName: string | undefined;
@@ -212,11 +237,16 @@ export function applyBSMove(
   if (isHit && hitShip) {
     // Hit
     newBoard[move] = 'hit';
+    newMoveOwnership[move] = player;
     opponentHealth[hitShip.name]--;
     
     if (opponentHealth[hitShip.name] === 0) {
-      // Ship sunk
+      // Ship sunk - mark all cells of this ship as sunk
       markShipAsSunk(newBoard, hitShip);
+      // Update ownership for all sunk cells
+      hitShip.cells.forEach(cell => {
+        newMoveOwnership[cell] = player;
+      });
       sunkShipName = hitShip.name;
       outcome = { outcome: 'sunk', sunkShipName };
     } else {
@@ -225,6 +255,7 @@ export function applyBSMove(
   } else {
     // Miss
     newBoard[move] = 'miss';
+    newMoveOwnership[move] = player;
     outcome = { outcome: 'miss' };
   }
 
@@ -235,7 +266,7 @@ export function applyBSMove(
     newFiredB.add(move);
   }
 
-  // Check win condition
+  // Check win condition - all opponent ships must be sunk (0 health)
   const totalOpponentHealth = Object.values(opponentHealth).reduce((sum, health) => sum + health, 0);
   const isWin = totalOpponentHealth === 0;
 
@@ -249,6 +280,7 @@ export function applyBSMove(
     firedB: newFiredB,
     shipHealthA: newShipHealthA,
     shipHealthB: newShipHealthB,
+    moveOwnership: newMoveOwnership,
   };
 
   return { newState, valid: true, outcome };
