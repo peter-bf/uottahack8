@@ -154,30 +154,114 @@ export function formatC4Board(board: C4Cell[]): string {
       const cell = board[getIndex(row, col)];
       rowCells.push(cell || '_');
     }
-    rows.push(`[${rowCells.join(', ')}]`);
+    rows.push(`| ${rowCells.join(' | ')} |`);
   }
   return rows.join('\n');
 }
 
-export function getC4BoardForPrompt(board: C4Cell[], player: Player): string {
-  const color = player === 'A' ? 'Red (R)' : 'Yellow (Y)';
+// Find columns where dropping a piece would complete 4-in-a-row
+function findWinningColumns(board: C4Cell[], mark: C4Cell): number[] {
+  const winningCols: number[] = [];
   const legalMoves = getC4LegalMoves(board);
 
-  return `You are playing Connect-4 as ${color}.
+  for (const col of legalMoves) {
+    const row = getLowestEmptyRow(board, col);
+    if (row === -1) continue;
 
-Board has 6 rows (0=top, 5=bottom) and 7 columns (0-6).
-Pieces drop to the lowest available row in the chosen column.
+    // Simulate placing the piece
+    const testBoard = [...board] as C4Cell[];
+    testBoard[getIndex(row, col)] = mark;
 
-Current board (top to bottom):
+    // Check if this creates a win
+    const { winner } = checkC4Winner(testBoard);
+    if (winner === mark) {
+      winningCols.push(col);
+    }
+  }
+
+  return winningCols;
+}
+
+// Find columns that would set up a threat (3-in-a-row with open space)
+function findThreateningColumns(board: C4Cell[], mark: C4Cell): number[] {
+  const threateningCols: number[] = [];
+  const legalMoves = getC4LegalMoves(board);
+
+  for (const col of legalMoves) {
+    const row = getLowestEmptyRow(board, col);
+    if (row === -1) continue;
+
+    // Simulate placing the piece
+    const testBoard = [...board] as C4Cell[];
+    testBoard[getIndex(row, col)] = mark;
+
+    // Check if this creates a position where we can win next turn
+    const futureMoves = getC4LegalMoves(testBoard);
+    for (const futureCol of futureMoves) {
+      const futureRow = getLowestEmptyRow(testBoard, futureCol);
+      if (futureRow === -1) continue;
+
+      const futureBoard = [...testBoard] as C4Cell[];
+      futureBoard[getIndex(futureRow, futureCol)] = mark;
+
+      const { winner } = checkC4Winner(futureBoard);
+      if (winner === mark && !threateningCols.includes(col)) {
+        threateningCols.push(col);
+      }
+    }
+  }
+
+  return threateningCols;
+}
+
+export function getC4BoardForPrompt(board: C4Cell[], player: Player): string {
+  const myMark = player === 'A' ? 'R' : 'Y';
+  const oppMark = player === 'A' ? 'Y' : 'R';
+  const myColor = player === 'A' ? 'Red (R)' : 'Yellow (Y)';
+  const oppColor = player === 'A' ? 'Yellow (Y)' : 'Red (R)';
+  const legalMoves = getC4LegalMoves(board);
+
+  // Find strategic information
+  const myWinningCols = findWinningColumns(board, myMark);
+  const oppWinningCols = findWinningColumns(board, oppMark);
+
+  let strategyHint = '';
+  if (myWinningCols.length > 0) {
+    strategyHint = `\n\n*** URGENT: You can WIN immediately by playing column: ${myWinningCols.join(' or ')} ***`;
+  } else if (oppWinningCols.length > 0) {
+    strategyHint = `\n\n*** URGENT: Opponent can win next turn! BLOCK by playing column: ${oppWinningCols.join(' or ')} ***`;
+  }
+
+  return `You are playing Connect-4. Your color is ${myColor}. Opponent is ${oppColor}.
+
+GOAL: Get 4 of your pieces in a row (horizontal, vertical, or diagonal) to WIN.
+
+Board layout (6 rows × 7 columns):
+- Row 0 is TOP, Row 5 is BOTTOM
+- Pieces drop DOWN to the lowest available row in the chosen column
+- Column numbers: 0  1  2  3  4  5  6
+
+Current board state:
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 |  <- Column numbers
 ${formatC4Board(board)}
 
-Column indices: 0 1 2 3 4 5 6
+Available columns to drop into: [${legalMoves.join(', ')}]${strategyHint}
 
-Legal moves (columns with space): [${legalMoves.join(', ')}]
+WIN CONDITIONS - Get 4 in a row:
+- Horizontal: 4 pieces in same row
+- Vertical: 4 pieces in same column
+- Diagonal: 4 pieces diagonally (either direction)
 
-Rules:
-- You must return ONLY a valid JSON response.
-- The move must be one of the legal column numbers listed above.
-- Get 4 in a row (horizontal, vertical, or diagonal) to win.
-- Play optimally to win.`;
+STRATEGY PRIORITY:
+1. WIN: If you can connect 4 now, do it.
+2. BLOCK: If opponent can connect 4 next turn, block it.
+3. SAFETY: Avoid moves that give the opponent an immediate winning drop.
+4. THREATS: Create double threats (two winning lines at once).
+5. POSITION: Favor center columns and moves that increase future connect-4 lines.
+
+Quick tactical checks:
+1. After choosing a candidate move, imagine the opponent's best reply.
+2. Do not play under an opponent's 3-in-a-row if it gives them a winning drop on top.
+
+Make the BEST move to win.`;
 }

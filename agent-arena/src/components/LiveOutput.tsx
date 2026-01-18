@@ -1,6 +1,6 @@
 'use client';
 
-import { MoveRecord, AgentConfig, GPTModel, DeepSeekModel } from '@/types';
+import { AgentConfig, GPTModel, DeepSeekModel } from '@/types';
 
 // Human-readable model names
 const MODEL_LABELS: Record<GPTModel | DeepSeekModel, string> = {
@@ -61,6 +61,7 @@ export function LiveOutput({ moves, agentA, agentB, isRunning, currentThinking, 
         {moves.map((move, index) => {
           const isAgentA = move.player === 'A';
           const config = isAgentA ? agentA : agentB;
+          const isDeepSeek = config.model === 'deepseek';
           const modelLabel = MODEL_LABELS[move.modelVariant] || move.modelVariant;
           const playerSymbol = gameType === 'ttt'
             ? (isAgentA ? 'X' : 'O')
@@ -70,15 +71,15 @@ export function LiveOutput({ moves, agentA, agentB, isRunning, currentThinking, 
             <div
               key={index}
               className={`p-2 rounded text-sm animate-fade-in ${
-                isAgentA ? 'bg-blue-500/10 border-l-2 border-blue-500' : 'bg-red-500/10 border-l-2 border-red-500'
+                isDeepSeek ? 'bg-blue-500/10 border-l-2 border-blue-500' : 'bg-red-500/10 border-l-2 border-red-500'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className={`font-medium ${isAgentA ? 'text-blue-400' : 'text-red-400'}`}>
+                <span className={`font-medium ${isDeepSeek ? 'text-blue-400' : 'text-red-400'}`}>
                   {modelLabel} ({playerSymbol})
                 </span>
                 <span className="text-slate-400 font-mono">
-                  → {formatMove(move.move)}
+                  -&gt; {formatMove(move.move)}
                 </span>
               </div>
               {move.reason && (
@@ -92,10 +93,16 @@ export function LiveOutput({ moves, agentA, agentB, isRunning, currentThinking, 
 
         {isRunning && currentThinking && (
           <div className={`p-2 rounded text-sm ${
-            currentThinking === 'A' ? 'bg-blue-500/10 border-l-2 border-blue-500' : 'bg-red-500/10 border-l-2 border-red-500'
+            (currentThinking === 'A' ? agentA.model : agentB.model) === 'deepseek'
+              ? 'bg-blue-500/10 border-l-2 border-blue-500'
+              : 'bg-red-500/10 border-l-2 border-red-500'
           }`}>
             <div className="flex items-center gap-2">
-              <span className={`font-medium ${currentThinking === 'A' ? 'text-blue-400' : 'text-red-400'}`}>
+              <span className={`font-medium ${
+                (currentThinking === 'A' ? agentA.model : agentB.model) === 'deepseek'
+                  ? 'text-blue-400'
+                  : 'text-red-400'
+              }`}>
                 {MODEL_LABELS[currentThinking === 'A' ? agentA.modelVariant : agentB.modelVariant]}
               </span>
               <div className="flex gap-1">

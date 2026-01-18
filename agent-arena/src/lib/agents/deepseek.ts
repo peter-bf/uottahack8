@@ -26,7 +26,7 @@ export async function callDeepSeek(
     const openai = getClient();
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: 'You are a game-playing AI. Respond only with valid JSON as instructed.' },
+      { role: 'system', content: 'You are an expert game-playing AI that plays to WIN. Always take winning moves when available. Always block opponent winning moves. Think strategically. Respond only with valid JSON as instructed - no markdown, no extra text.' },
       { role: 'user', content: prompt },
     ];
 

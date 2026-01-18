@@ -62,7 +62,7 @@ export function ReplayControls({
                 : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
             }`}
           >
-            {index + 1}. {move.player}→{move.move}
+            {index + 1}. {move.player} -&gt; {move.move}
           </button>
         ))}
       </div>

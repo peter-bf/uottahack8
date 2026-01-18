@@ -52,7 +52,6 @@ export async function runMatch(
     const result = await callAgent(
       agent.model,
       agent.modelVariant,
-      agent.mode,
       gameType,
       state.board,
       currentPlayer,

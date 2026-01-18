@@ -31,12 +31,12 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
           <div className="text-2xl font-bold">{totals.matches}</div>
           <div className="text-xs text-slate-400">Total Matches</div>
         </div>
-        <div className="bg-green-500/20 rounded-lg p-3 text-center border border-green-500/30">
-          <div className="text-2xl font-bold text-green-400">{totals.gptWins}</div>
-          <div className="text-xs text-slate-400">GPT Wins</div>
+        <div className="bg-red-500/20 rounded-lg p-3 text-center border border-red-500/30">
+          <div className="text-2xl font-bold text-red-400">{totals.gptWins}</div>
+          <div className="text-xs text-slate-400">OpenAI Wins</div>
         </div>
-        <div className="bg-purple-500/20 rounded-lg p-3 text-center border border-purple-500/30">
-          <div className="text-2xl font-bold text-purple-400">{totals.deepseekWins}</div>
+        <div className="bg-blue-500/20 rounded-lg p-3 text-center border border-blue-500/30">
+          <div className="text-2xl font-bold text-blue-400">{totals.deepseekWins}</div>
           <div className="text-xs text-slate-400">DeepSeek Wins</div>
         </div>
         <div className="bg-yellow-500/20 rounded-lg p-3 text-center border border-yellow-500/30">
@@ -52,8 +52,8 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
             <tr className="border-b border-slate-600">
               <th className="text-left py-2 px-3 text-slate-400">Game</th>
               <th className="text-center py-2 px-3 text-slate-400">Matches</th>
-              <th className="text-center py-2 px-3 text-green-400">GPT Wins</th>
-              <th className="text-center py-2 px-3 text-purple-400">DeepSeek Wins</th>
+              <th className="text-center py-2 px-3 text-red-400">OpenAI Wins</th>
+              <th className="text-center py-2 px-3 text-blue-400">DeepSeek Wins</th>
               <th className="text-center py-2 px-3 text-yellow-400">Draws</th>
             </tr>
           </thead>
@@ -62,8 +62,8 @@ export function GlobalStats({ stats }: GlobalStatsProps) {
               <tr key={game.key} className="border-b border-slate-700">
                 <td className="py-3 px-3 font-medium">{game.name}</td>
                 <td className="py-3 px-3 text-center">{game.data.matchesPlayed}</td>
-                <td className="py-3 px-3 text-center text-green-400">{game.data.winsByModel.gpt}</td>
-                <td className="py-3 px-3 text-center text-purple-400">{game.data.winsByModel.deepseek}</td>
+                <td className="py-3 px-3 text-center text-red-400">{game.data.winsByModel.gpt}</td>
+                <td className="py-3 px-3 text-center text-blue-400">{game.data.winsByModel.deepseek}</td>
                 <td className="py-3 px-3 text-center text-yellow-400">{game.data.draws}</td>
               </tr>
             ))}

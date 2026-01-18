@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   GameType,
   ModelType,
-  AgentMode,
   MatchResult,
   GlobalStats as GlobalStatsType,
   TTTCell,
@@ -25,14 +24,14 @@ const INITIAL_TTT_BOARD: TTTCell[] = Array(9).fill(null);
 const INITIAL_C4_BOARD: C4Cell[] = Array(42).fill(null);
 
 export default function Home() {
-  // Game settings
   const [gameType, setGameType] = useState<GameType>('ttt');
   const [agentAModel, setAgentAModel] = useState<ModelType>('gpt');
   const [agentAModelVariant, setAgentAModelVariant] = useState<GPTModel | DeepSeekModel>('gpt-4o-mini');
-  const [agentAMode, setAgentAMode] = useState<AgentMode>('react');
   const [agentBModel, setAgentBModel] = useState<ModelType>('deepseek');
   const [agentBModelVariant, setAgentBModelVariant] = useState<GPTModel | DeepSeekModel>('deepseek-chat');
-  const [agentBMode, setAgentBMode] = useState<AgentMode>('planner');
+  const agentALabel = agentAModel === 'gpt' ? 'OpenAI' : 'DeepSeek';
+  const agentBLabel = agentBModel === 'gpt' ? 'OpenAI' : 'DeepSeek';
+  const getLabelForPlayer = (player: 'A' | 'B') => (player === 'A' ? agentALabel : agentBLabel);
 
   // Match state
   const [isRunning, setIsRunning] = useState(false);
@@ -148,8 +147,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gameType,
-          agentA: { model: agentAModel, modelVariant: agentAModelVariant, mode: agentAMode },
-          agentB: { model: agentBModel, modelVariant: agentBModelVariant, mode: agentBMode },
+          agentA: { model: agentAModel, modelVariant: agentAModelVariant },
+          agentB: { model: agentBModel, modelVariant: agentBModelVariant },
         }),
       });
 
@@ -252,7 +251,7 @@ export default function Home() {
       }
       case 'forfeit': {
         const d = data as { player: 'A' | 'B'; reason: string };
-        setError(`Agent ${d.player} forfeited: ${d.reason}`);
+        setError(`${getLabelForPlayer(d.player)} forfeited: ${d.reason}`);
         break;
       }
     }
@@ -338,6 +337,15 @@ export default function Home() {
             Agent Arena
           </h1>
           <p className="text-slate-400 mt-2">Agentic Compare - uOttaHack 7</p>
+          <div className="mt-2 flex items-center justify-center gap-2 text-sm font-semibold">
+            <span className={agentAModel === 'deepseek' ? 'text-blue-400' : 'text-red-400'}>
+              {agentALabel}
+            </span>
+            <span className="text-slate-500">vs</span>
+            <span className={agentBModel === 'deepseek' ? 'text-blue-400' : 'text-red-400'}>
+              {agentBLabel}
+            </span>
+          </div>
         </header>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -347,17 +355,13 @@ export default function Home() {
               gameType={gameType}
               agentAModel={agentAModel}
               agentAModelVariant={agentAModelVariant}
-              agentAMode={agentAMode}
               agentBModel={agentBModel}
               agentBModelVariant={agentBModelVariant}
-              agentBMode={agentBMode}
               onGameTypeChange={setGameType}
               onAgentAModelChange={setAgentAModel}
               onAgentAModelVariantChange={setAgentAModelVariant}
-              onAgentAModeChange={setAgentAMode}
               onAgentBModelChange={setAgentBModel}
               onAgentBModelVariantChange={setAgentBModelVariant}
-              onAgentBModeChange={setAgentBMode}
               onRunMatch={runMatch}
               isRunning={isRunning}
             />
@@ -395,8 +399,9 @@ export default function Home() {
             <div className="w-full mt-4">
               <LiveOutput
                 moves={liveMoves}
-                agentA={{ model: agentAModel, modelVariant: agentAModelVariant, mode: agentAMode }}
-                agentB={{ model: agentBModel, modelVariant: agentBModelVariant, mode: agentBMode }}
+                agentA={{ model: agentAModel, modelVariant: agentAModelVariant }}
+                agentB={{ model: agentBModel, modelVariant: agentBModelVariant }}
+
                 isRunning={isRunning}
                 currentThinking={currentThinking}
                 gameType={gameType}
@@ -430,14 +435,14 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-4">
               <AgentPanel
                 label="A"
-                config={{ model: agentAModel, modelVariant: agentAModelVariant, mode: agentAMode }}
+                config={{ model: agentAModel, modelVariant: agentAModelVariant }}
                 lastMove={isRunning ? (liveMoves.filter(m => m.player === 'A').pop() as any) : lastMoveA}
                 isActive={isRunning && currentThinking === 'A'}
                 metrics={matchResult?.metrics.agentA}
               />
               <AgentPanel
                 label="B"
-                config={{ model: agentBModel, modelVariant: agentBModelVariant, mode: agentBMode }}
+                config={{ model: agentBModel, modelVariant: agentBModelVariant }}
                 lastMove={isRunning ? (liveMoves.filter(m => m.player === 'B').pop() as any) : lastMoveB}
                 isActive={isRunning && currentThinking === 'B'}
                 metrics={matchResult?.metrics.agentB}

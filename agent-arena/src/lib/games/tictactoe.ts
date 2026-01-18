@@ -88,32 +88,74 @@ export function checkTTTWinner(board: TTTCell[]): { winner: 'X' | 'O' | null; wi
 }
 
 export function formatTTTBoard(board: TTTCell[]): string {
-  const display = board.map(cell => cell || '_');
-  return `[${display.slice(0, 3).join(', ')},
- ${display.slice(3, 6).join(', ')},
- ${display.slice(6, 9).join(', ')}]`;
+  const display = board.map((cell, i) => cell || '_');
+  return `${display[0]} | ${display[1]} | ${display[2]}
+---------
+${display[3]} | ${display[4]} | ${display[5]}
+---------
+${display[6]} | ${display[7]} | ${display[8]}`;
+}
+
+// Find winning moves for a given mark
+function findWinningMoves(board: TTTCell[], mark: TTTCell): number[] {
+  const winningMoves: number[] = [];
+  for (const line of WIN_LINES) {
+    const cells = line.map(i => board[i]);
+    const markCount = cells.filter(c => c === mark).length;
+    const emptyCount = cells.filter(c => c === null).length;
+
+    if (markCount === 2 && emptyCount === 1) {
+      const emptyIdx = line.find(i => board[i] === null);
+      if (emptyIdx !== undefined && !winningMoves.includes(emptyIdx)) {
+        winningMoves.push(emptyIdx);
+      }
+    }
+  }
+  return winningMoves;
 }
 
 export function getTTTBoardForPrompt(board: TTTCell[], player: Player): string {
-  const mark = player === 'A' ? 'X' : 'O';
+  const myMark = player === 'A' ? 'X' : 'O';
+  const oppMark = player === 'A' ? 'O' : 'X';
   const legalMoves = getTTTLegalMoves(board);
 
-  return `You are playing Tic-Tac-Toe as ${mark}.
+  // Find strategic information
+  const myWinningMoves = findWinningMoves(board, myMark);
+  const oppWinningMoves = findWinningMoves(board, oppMark);
 
-Board is a 3x3 grid in row-major order:
+  let strategyHint = '';
+  if (myWinningMoves.length > 0) {
+    strategyHint = `\n\nURGENT: You can WIN immediately by playing: ${myWinningMoves.join(' or ')}`;
+  } else if (oppWinningMoves.length > 0) {
+    strategyHint = `\n\nURGENT: Opponent can win next turn! BLOCK by playing: ${oppWinningMoves.join(' or ')}`;
+  }
 
-Index mapping:
-0 1 2
-3 4 5
-6 7 8
+  return `You are playing Tic-Tac-Toe. Your mark is "${myMark}". Opponent's mark is "${oppMark}".
 
-Current board:
+GOAL: Get 3 of your marks in a row (horizontal, vertical, or diagonal) to WIN.
+
+Board positions (use these numbers for your move):
+0 | 1 | 2
+---------
+3 | 4 | 5
+---------
+6 | 7 | 8
+
+Current board state:
 ${formatTTTBoard(board)}
 
-Legal moves: [${legalMoves.join(', ')}]
+Win conditions - 3 in a row on any of these lines:
+- Rows: [0,1,2], [3,4,5], [6,7,8]
+- Columns: [0,3,6], [1,4,7], [2,5,8]
+- Diagonals: [0,4,8], [2,4,6]
 
-Rules:
-- You must return ONLY a valid JSON response.
-- The move must be one of the legal moves listed above.
-- Play optimally to win.`;
+Available moves: [${legalMoves.join(', ')}]${strategyHint}
+
+STRATEGY PRIORITY:
+1. WIN: If you can get 3 in a row, do it!
+2. BLOCK: If opponent has 2 in a row with an empty cell, block them!
+3. CENTER: Position 4 (center) is strategically valuable
+4. CORNERS: Positions 0, 2, 6, 8 are strong
+
+Think carefully and make the BEST move to win.`;
 }

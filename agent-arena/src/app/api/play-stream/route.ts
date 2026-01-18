@@ -3,11 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   GameType,
   ModelType,
-  AgentMode,
   GPTModel,
   DeepSeekModel,
   AgentConfig,
-  GameState,
   MoveRecord,
   MatchResult,
   AgentMetrics,
@@ -32,10 +30,6 @@ function isValidModelType(val: unknown): val is ModelType {
   return val === 'gpt' || val === 'deepseek';
 }
 
-function isValidAgentMode(val: unknown): val is AgentMode {
-  return val === 'react' || val === 'planner';
-}
-
 function isValidModelVariant(model: ModelType, variant: unknown): variant is GPTModel | DeepSeekModel {
   if (model === 'gpt') {
     return VALID_GPT_MODELS.includes(variant as GPTModel);
@@ -52,12 +46,12 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'Invalid gameType' }), { status: 400 });
   }
 
-  if (!body.agentA || !isValidModelType(body.agentA.model) || !isValidAgentMode(body.agentA.mode) ||
+  if (!body.agentA || !isValidModelType(body.agentA.model) ||
       !isValidModelVariant(body.agentA.model, body.agentA.modelVariant)) {
     return new Response(JSON.stringify({ error: 'Invalid agentA configuration' }), { status: 400 });
   }
 
-  if (!body.agentB || !isValidModelType(body.agentB.model) || !isValidAgentMode(body.agentB.mode) ||
+  if (!body.agentB || !isValidModelType(body.agentB.model) ||
       !isValidModelVariant(body.agentB.model, body.agentB.modelVariant)) {
     return new Response(JSON.stringify({ error: 'Invalid agentB configuration' }), { status: 400 });
   }
@@ -66,12 +60,10 @@ export async function POST(request: NextRequest) {
   const agentA: AgentConfig = {
     model: body.agentA.model,
     modelVariant: body.agentA.modelVariant,
-    mode: body.agentA.mode,
   };
   const agentB: AgentConfig = {
     model: body.agentB.model,
     modelVariant: body.agentB.modelVariant,
-    mode: body.agentB.mode,
   };
 
   // Create a streaming response
@@ -110,7 +102,6 @@ export async function POST(request: NextRequest) {
           const result = await callAgent(
             agent.model,
             agent.modelVariant,
-            agent.mode,
             gameType,
             state.board,
             currentPlayer,

@@ -1,7 +1,6 @@
 // Game types
 export type GameType = 'ttt' | 'c4';
 export type ModelType = 'gpt' | 'deepseek';
-export type AgentMode = 'react' | 'planner';
 export type Player = 'A' | 'B';
 export type Winner = 'A' | 'B' | 'draw';
 
@@ -19,7 +18,6 @@ export type C4Cell = 'R' | 'Y' | null; // Red, Yellow
 export interface AgentConfig {
   model: ModelType;
   modelVariant: GPTModel | DeepSeekModel;
-  mode: AgentMode;
 }
 
 export interface GameState {

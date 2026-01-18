@@ -1,4 +1,4 @@
-import { ModelType, AgentMode, AgentResponse, GameType, Player, TTTCell, C4Cell, GPTModel, DeepSeekModel } from '@/types';
+import { ModelType, AgentResponse, GameType, Player, TTTCell, C4Cell, GPTModel, DeepSeekModel } from '@/types';
 import { callGPT } from './gpt';
 import { callDeepSeek } from './deepseek';
 import { buildPrompt, buildRetryPrompt } from './prompts';
@@ -17,7 +17,6 @@ const MAX_RETRIES = 5; // Max total retries per turn
 export async function callAgent(
   model: ModelType,
   modelVariant: GPTModel | DeepSeekModel,
-  mode: AgentMode,
   gameType: GameType,
   board: (TTTCell | C4Cell)[],
   player: Player,
@@ -31,7 +30,7 @@ export async function callAgent(
     forfeit: false,
   };
 
-  const prompt = buildPrompt(gameType, board, player, mode);
+  const prompt = buildPrompt(gameType, board, player);
 
   let lastError = '';
 

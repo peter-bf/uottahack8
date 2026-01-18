@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GameType, ModelType, AgentMode, GPTModel, DeepSeekModel } from '@/types';
+import { GameType, ModelType, GPTModel, DeepSeekModel } from '@/types';
 import { runMatch } from '@/lib/simulation';
 import { saveMatch } from '@/lib/db';
 
@@ -12,10 +12,6 @@ function isValidGameType(val: unknown): val is GameType {
 
 function isValidModelType(val: unknown): val is ModelType {
   return val === 'gpt' || val === 'deepseek';
-}
-
-function isValidAgentMode(val: unknown): val is AgentMode {
-  return val === 'react' || val === 'planner';
 }
 
 function isValidModelVariant(model: ModelType, variant: unknown): variant is GPTModel | DeepSeekModel {
@@ -39,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate Agent A
-    if (!body.agentA || !isValidModelType(body.agentA.model) || !isValidAgentMode(body.agentA.mode)) {
+    if (!body.agentA || !isValidModelType(body.agentA.model)) {
       return NextResponse.json(
         { error: 'Invalid agentA configuration.' },
         { status: 400 }
@@ -54,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate Agent B
-    if (!body.agentB || !isValidModelType(body.agentB.model) || !isValidAgentMode(body.agentB.mode)) {
+    if (!body.agentB || !isValidModelType(body.agentB.model)) {
       return NextResponse.json(
         { error: 'Invalid agentB configuration.' },
         { status: 400 }
@@ -74,12 +70,10 @@ export async function POST(request: NextRequest) {
       {
         model: body.agentA.model,
         modelVariant: body.agentA.modelVariant,
-        mode: body.agentA.mode,
       },
       {
         model: body.agentB.model,
         modelVariant: body.agentB.modelVariant,
-        mode: body.agentB.mode,
       }
     );
 

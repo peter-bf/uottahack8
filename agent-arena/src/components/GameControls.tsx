@@ -1,6 +1,6 @@
 'use client';
 
-import { GameType, ModelType, AgentMode, GPTModel, DeepSeekModel } from '@/types';
+import { GameType, ModelType, GPTModel, DeepSeekModel } from '@/types';
 
 // Model variant options
 const GPT_MODELS: { value: GPTModel; label: string }[] = [
@@ -19,17 +19,13 @@ interface GameControlsProps {
   gameType: GameType;
   agentAModel: ModelType;
   agentAModelVariant: GPTModel | DeepSeekModel;
-  agentAMode: AgentMode;
   agentBModel: ModelType;
   agentBModelVariant: GPTModel | DeepSeekModel;
-  agentBMode: AgentMode;
   onGameTypeChange: (type: GameType) => void;
   onAgentAModelChange: (model: ModelType) => void;
   onAgentAModelVariantChange: (variant: GPTModel | DeepSeekModel) => void;
-  onAgentAModeChange: (mode: AgentMode) => void;
   onAgentBModelChange: (model: ModelType) => void;
   onAgentBModelVariantChange: (variant: GPTModel | DeepSeekModel) => void;
-  onAgentBModeChange: (mode: AgentMode) => void;
   onRunMatch: () => void;
   isRunning: boolean;
 }
@@ -38,22 +34,24 @@ export function GameControls({
   gameType,
   agentAModel,
   agentAModelVariant,
-  agentAMode,
   agentBModel,
   agentBModelVariant,
-  agentBMode,
   onGameTypeChange,
   onAgentAModelChange,
   onAgentAModelVariantChange,
-  onAgentAModeChange,
   onAgentBModelChange,
   onAgentBModelVariantChange,
-  onAgentBModeChange,
   onRunMatch,
   isRunning,
 }: GameControlsProps) {
   const agentAModels = agentAModel === 'gpt' ? GPT_MODELS : DEEPSEEK_MODELS;
   const agentBModels = agentBModel === 'gpt' ? GPT_MODELS : DEEPSEEK_MODELS;
+  const agentATitle = agentAModel === 'gpt' ? 'OpenAI' : 'DeepSeek';
+  const agentBTitle = agentBModel === 'gpt' ? 'OpenAI' : 'DeepSeek';
+  const agentABorder = agentAModel === 'deepseek' ? 'border-blue-500' : 'border-red-500';
+  const agentBBorder = agentBModel === 'deepseek' ? 'border-blue-500' : 'border-red-500';
+  const agentAText = agentAModel === 'deepseek' ? 'text-blue-400' : 'text-red-400';
+  const agentBText = agentBModel === 'deepseek' ? 'text-blue-400' : 'text-red-400';
 
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
@@ -89,8 +87,8 @@ export function GameControls({
       {/* Agent Configuration */}
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         {/* Agent A */}
-        <div className="bg-slate-700/50 rounded-lg p-4 border-l-4 border-blue-500">
-          <h3 className="font-medium mb-3 text-blue-400">Agent A (X / Red)</h3>
+        <div className={`bg-slate-700/50 rounded-lg p-4 border-l-4 ${agentABorder}`}>
+          <h3 className={`font-medium mb-3 ${agentAText}`}>{agentATitle} (X / Red)</h3>
 
           <div className="mb-3">
             <label className="block text-xs text-slate-400 mb-1">Provider</label>
@@ -104,7 +102,7 @@ export function GameControls({
               }}
               className="w-full bg-slate-600 rounded px-3 py-2 text-sm"
             >
-              <option value="gpt">OpenAI (GPT)</option>
+              <option value="gpt">OpenAI</option>
               <option value="deepseek">DeepSeek</option>
             </select>
           </div>
@@ -124,22 +122,11 @@ export function GameControls({
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Agent Mode</label>
-            <select
-              value={agentAMode}
-              onChange={(e) => onAgentAModeChange(e.target.value as AgentMode)}
-              className="w-full bg-slate-600 rounded px-3 py-2 text-sm"
-            >
-              <option value="react">ReAct</option>
-              <option value="planner">Planner</option>
-            </select>
-          </div>
         </div>
 
         {/* Agent B */}
-        <div className="bg-slate-700/50 rounded-lg p-4 border-l-4 border-red-500">
-          <h3 className="font-medium mb-3 text-red-400">Agent B (O / Yellow)</h3>
+        <div className={`bg-slate-700/50 rounded-lg p-4 border-l-4 ${agentBBorder}`}>
+          <h3 className={`font-medium mb-3 ${agentBText}`}>{agentBTitle} (O / Yellow)</h3>
 
           <div className="mb-3">
             <label className="block text-xs text-slate-400 mb-1">Provider</label>
@@ -153,7 +140,7 @@ export function GameControls({
               }}
               className="w-full bg-slate-600 rounded px-3 py-2 text-sm"
             >
-              <option value="gpt">OpenAI (GPT)</option>
+              <option value="gpt">OpenAI</option>
               <option value="deepseek">DeepSeek</option>
             </select>
           </div>
@@ -173,17 +160,6 @@ export function GameControls({
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Agent Mode</label>
-            <select
-              value={agentBMode}
-              onChange={(e) => onAgentBModeChange(e.target.value as AgentMode)}
-              className="w-full bg-slate-600 rounded px-3 py-2 text-sm"
-            >
-              <option value="react">ReAct</option>
-              <option value="planner">Planner</option>
-            </select>
-          </div>
         </div>
       </div>
 
