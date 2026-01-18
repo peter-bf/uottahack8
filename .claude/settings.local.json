@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 15 npm run dev:*)",
+      "Bash(dir node_moduleslucide-react)",
+      "Bash(npm.cmd install:*)",
+      "Bash(dir:*)"
     ]
   }
 }

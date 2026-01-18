@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   GameType,
   ModelType,
@@ -20,39 +20,53 @@ import { GlobalStats } from '@/components/GlobalStats';
 import { GameControls } from '@/components/GameControls';
 import { ReplayControls } from '@/components/ReplayControls';
 import { LiveOutput, LiveMove } from '@/components/LiveOutput';
-import { PROVIDER_LABELS, PROVIDER_STYLES } from '@/lib/ui/providerStyles';
+import { PROVIDER_LABELS, getPlayerStyles } from '@/lib/ui/providerStyles';
 
 const INITIAL_TTT_BOARD: TTTCell[] = Array(9).fill(null);
 const INITIAL_C4_BOARD: C4Cell[] = Array(42).fill(null);
 
+// State for a single game session
+interface GameSession {
+  isRunning: boolean;
+  matchResult: MatchResult | null;
+  liveMoves: LiveMove[];
+  currentThinking: 'A' | 'B' | null;
+  displayBoard: (TTTCell | C4Cell)[];
+  currentMoveIndex: number;
+  isAutoPlaying: boolean;
+  lastMoveIdx: number | null;
+  error: string | null;
+  agentAModel: ModelType;
+  agentAModelVariant: GPTModel | DeepSeekModel | GeminiModel;
+  agentBModel: ModelType;
+  agentBModelVariant: GPTModel | DeepSeekModel | GeminiModel;
+}
+
+const createInitialSession = (gameType: GameType): GameSession => ({
+  isRunning: false,
+  matchResult: null,
+  liveMoves: [],
+  currentThinking: null,
+  displayBoard: gameType === 'ttt' ? [...INITIAL_TTT_BOARD] : [...INITIAL_C4_BOARD],
+  currentMoveIndex: -1,
+  isAutoPlaying: false,
+  lastMoveIdx: null,
+  error: null,
+  agentAModel: 'gpt',
+  agentAModelVariant: 'gpt-4o-mini',
+  agentBModel: 'deepseek',
+  agentBModelVariant: 'deepseek-chat',
+});
+
 export default function Home() {
-  const [gameType, setGameType] = useState<GameType>('ttt');
-  const [agentAModel, setAgentAModel] = useState<ModelType>('gpt');
-  const [agentAModelVariant, setAgentAModelVariant] = useState<GPTModel | DeepSeekModel | GeminiModel>('gpt-4o-mini');
-  const [agentBModel, setAgentBModel] = useState<ModelType>('deepseek');
-  const [agentBModelVariant, setAgentBModelVariant] = useState<GPTModel | DeepSeekModel | GeminiModel>('deepseek-chat');
-  const agentALabel = PROVIDER_LABELS[agentAModel];
-  const agentBLabel = PROVIDER_LABELS[agentBModel];
-  const agentAStyle = PROVIDER_STYLES[agentAModel];
-  const agentBStyle = PROVIDER_STYLES[agentBModel];
-  const getLabelForPlayer = (player: 'A' | 'B') => (player === 'A' ? agentALabel : agentBLabel);
+  // Current view - which game we're looking at
+  const [activeGameType, setActiveGameType] = useState<GameType>('ttt');
 
-  // Match state
-  const [isRunning, setIsRunning] = useState(false);
-  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Live output state
-  const [liveMoves, setLiveMoves] = useState<LiveMove[]>([]);
-  const [currentThinking, setCurrentThinking] = useState<'A' | 'B' | null>(null);
-
-  // Replay state
-  const [displayBoard, setDisplayBoard] = useState<(TTTCell | C4Cell)[]>(
-    gameType === 'ttt' ? INITIAL_TTT_BOARD : INITIAL_C4_BOARD
-  );
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
-  const [lastMoveIdx, setLastMoveIdx] = useState<number | null>(null);
+  // Game sessions - isolated state for each game type
+  const [sessions, setSessions] = useState<Record<GameType, GameSession>>({
+    ttt: createInitialSession('ttt'),
+    c4: createInitialSession('c4'),
+  });
 
   // Global stats
   const [globalStats, setGlobalStats] = useState<GlobalStatsType>({
@@ -60,68 +74,89 @@ export default function Home() {
     c4: { matchesPlayed: 0, draws: 0, winsByModel: { gpt: 0, deepseek: 0, gemini: 0 } },
   });
 
+  // Abort controllers for each game type
+  const abortControllers = useRef<Record<GameType, AbortController | null>>({
+    ttt: null,
+    c4: null,
+  });
+
+  // Get current session
+  const session = sessions[activeGameType];
+
+  // Helper to update a specific session
+  const updateSession = useCallback((gameType: GameType, updates: Partial<GameSession>) => {
+    setSessions(prev => ({
+      ...prev,
+      [gameType]: { ...prev[gameType], ...updates },
+    }));
+  }, []);
+
+  // Player styles
+  const agentAStyle = getPlayerStyles(session.agentAModel, false);
+  const agentBStyle = getPlayerStyles(session.agentBModel, session.agentAModel === session.agentBModel);
+
   // Fetch stats on load
   useEffect(() => {
     fetchStats();
   }, []);
 
-  // Reset board when game type changes
-  useEffect(() => {
-    setDisplayBoard(gameType === 'ttt' ? INITIAL_TTT_BOARD : INITIAL_C4_BOARD);
-    setMatchResult(null);
-    setCurrentMoveIndex(-1);
-    setLiveMoves([]);
-  }, [gameType]);
-
   // Auto-play functionality
   useEffect(() => {
-    if (!isAutoPlaying || !matchResult) return;
+    if (!session.isAutoPlaying || !session.matchResult) return;
 
     const timer = setInterval(() => {
-      setCurrentMoveIndex((prev) => {
-        if (prev >= matchResult.moves.length - 1) {
-          setIsAutoPlaying(false);
-          return prev;
+      setSessions(prev => {
+        const currentSession = prev[activeGameType];
+        if (currentSession.currentMoveIndex >= (currentSession.matchResult?.moves.length ?? 0) - 1) {
+          return {
+            ...prev,
+            [activeGameType]: { ...currentSession, isAutoPlaying: false },
+          };
         }
-        return prev + 1;
+        return {
+          ...prev,
+          [activeGameType]: { ...currentSession, currentMoveIndex: currentSession.currentMoveIndex + 1 },
+        };
       });
     }, 500);
 
     return () => clearInterval(timer);
-  }, [isAutoPlaying, matchResult]);
+  }, [session.isAutoPlaying, session.matchResult, activeGameType]);
 
   // Update display board when move index changes (for replay)
   useEffect(() => {
-    if (!matchResult || isRunning) return;
+    if (!session.matchResult || session.isRunning) return;
 
-    if (currentMoveIndex < 0) {
-      setDisplayBoard(gameType === 'ttt' ? INITIAL_TTT_BOARD : INITIAL_C4_BOARD);
+    if (session.currentMoveIndex < 0) {
+      updateSession(activeGameType, {
+        displayBoard: activeGameType === 'ttt' ? [...INITIAL_TTT_BOARD] : [...INITIAL_C4_BOARD],
+      });
       return;
     }
 
     // Reconstruct board state up to current move
-    const board = gameType === 'ttt'
+    const board = activeGameType === 'ttt'
       ? [...INITIAL_TTT_BOARD]
       : [...INITIAL_C4_BOARD];
 
-    for (let i = 0; i <= currentMoveIndex && i < matchResult.moves.length; i++) {
-      const move = matchResult.moves[i];
-      if (gameType === 'ttt') {
-        (board as TTTCell[])[move.move] = move.player === 'A' ? 'X' : 'O';
+    for (let i = 0; i <= session.currentMoveIndex && i < session.matchResult.moves.length; i++) {
+      const moveRecord = session.matchResult.moves[i];
+      if (activeGameType === 'ttt') {
+        (board as TTTCell[])[moveRecord.move] = moveRecord.player === 'A' ? 'X' : 'O';
       } else {
-        const col = move.move;
+        const column: number = moveRecord.move;
         for (let row = 5; row >= 0; row--) {
-          const idx = row * 7 + col;
+          const idx = row * 7 + column;
           if (board[idx] === null) {
-            (board as C4Cell[])[idx] = move.player === 'A' ? 'R' : 'Y';
+            (board as C4Cell[])[idx] = moveRecord.player === 'A' ? 'R' : 'Y';
             break;
           }
         }
       }
     }
 
-    setDisplayBoard(board);
-  }, [currentMoveIndex, matchResult, gameType, isRunning]);
+    updateSession(activeGameType, { displayBoard: board });
+  }, [session.currentMoveIndex, session.matchResult, session.isRunning, activeGameType, updateSession]);
 
   const fetchStats = async () => {
     try {
@@ -136,14 +171,25 @@ export default function Home() {
   };
 
   const runMatch = async () => {
-    setIsRunning(true);
-    setError(null);
-    setMatchResult(null);
-    setCurrentMoveIndex(-1);
-    setLiveMoves([]);
-    setCurrentThinking(null);
-    setDisplayBoard(gameType === 'ttt' ? INITIAL_TTT_BOARD : INITIAL_C4_BOARD);
-    setLastMoveIdx(null);
+    const gameType = activeGameType;
+    const currentSession = sessions[gameType];
+
+    // Abort any existing match for this game type
+    if (abortControllers.current[gameType]) {
+      abortControllers.current[gameType]!.abort();
+    }
+    abortControllers.current[gameType] = new AbortController();
+
+    updateSession(gameType, {
+      isRunning: true,
+      error: null,
+      matchResult: null,
+      currentMoveIndex: -1,
+      liveMoves: [],
+      currentThinking: null,
+      displayBoard: gameType === 'ttt' ? [...INITIAL_TTT_BOARD] : [...INITIAL_C4_BOARD],
+      lastMoveIdx: null,
+    });
 
     try {
       const res = await fetch('/api/play-stream', {
@@ -151,9 +197,10 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gameType,
-          agentA: { model: agentAModel, modelVariant: agentAModelVariant },
-          agentB: { model: agentBModel, modelVariant: agentBModelVariant },
+          agentA: { model: currentSession.agentAModel, modelVariant: currentSession.agentAModelVariant },
+          agentB: { model: currentSession.agentBModel, modelVariant: currentSession.agentBModelVariant },
         }),
+        signal: abortControllers.current[gameType]!.signal,
       });
 
       if (!res.ok) {
@@ -181,24 +228,30 @@ export default function Home() {
             eventType = line.slice(7);
           } else if (line.startsWith('data: ')) {
             const data = JSON.parse(line.slice(6));
-            handleStreamEvent(eventType, data);
+            handleStreamEvent(gameType, eventType, data);
           }
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      if ((err as Error).name !== 'AbortError') {
+        updateSession(gameType, {
+          error: err instanceof Error ? err.message : 'An error occurred',
+        });
+      }
     } finally {
-      setIsRunning(false);
-      setCurrentThinking(null);
+      updateSession(gameType, {
+        isRunning: false,
+        currentThinking: null,
+      });
       await fetchStats();
     }
   };
 
-  const handleStreamEvent = (event: string, data: unknown) => {
+  const handleStreamEvent = (gameType: GameType, event: string, data: unknown) => {
     switch (event) {
       case 'thinking': {
-        const d = data as { player: 'A' | 'B'; modelVariant: GPTModel | DeepSeekModel | GeminiModel };
-        setCurrentThinking(d.player);
+        const d = data as { player: 'A' | 'B' };
+        updateSession(gameType, { currentThinking: d.player });
         break;
       }
       case 'move': {
@@ -208,107 +261,137 @@ export default function Home() {
           reason?: string;
           modelVariant: GPTModel | DeepSeekModel | GeminiModel;
           board: (TTTCell | C4Cell)[];
-          winLine: number[] | null;
         };
-        setCurrentThinking(null);
-        setLiveMoves(prev => [...prev, {
+
+        const newMove: LiveMove = {
           player: d.player,
           move: d.move,
           reason: d.reason,
           modelVariant: d.modelVariant,
           timestamp: Date.now(),
-        }]);
-        setDisplayBoard(d.board);
-        // Calculate last move index for highlighting
-        if (gameType === 'ttt') {
-          setLastMoveIdx(d.move);
-        } else {
-          // For C4, find where piece landed
+        };
+
+        let lastMoveIdx = d.move;
+        if (gameType === 'c4') {
           const col = d.move;
           for (let row = 5; row >= 0; row--) {
             const idx = row * 7 + col;
             if (d.board[idx] !== null) {
-              // Check if this is the most recently placed piece
               let countAbove = 0;
               for (let r = row - 1; r >= 0; r--) {
                 if (d.board[r * 7 + col] !== null) countAbove++;
               }
               if (countAbove === 0 || d.board[(row - 1) * 7 + col] === null) {
-                setLastMoveIdx(idx);
+                lastMoveIdx = idx;
                 break;
               }
             }
           }
         }
+
+        setSessions(prev => ({
+          ...prev,
+          [gameType]: {
+            ...prev[gameType],
+            currentThinking: null,
+            liveMoves: [...prev[gameType].liveMoves, newMove],
+            displayBoard: d.board,
+            lastMoveIdx,
+          },
+        }));
         break;
       }
       case 'complete': {
         const result = data as MatchResult;
-        setMatchResult(result);
-        setCurrentMoveIndex(result.moves.length - 1);
+        updateSession(gameType, {
+          matchResult: result,
+          currentMoveIndex: result.moves.length - 1,
+        });
         break;
       }
       case 'error': {
         const d = data as { message: string };
-        setError(d.message);
+        updateSession(gameType, { error: d.message });
         break;
       }
       case 'forfeit': {
         const d = data as { player: 'A' | 'B'; reason: string };
-        setError(`${getLabelForPlayer(d.player)} forfeited: ${d.reason}`);
+        const playerLabel = PROVIDER_LABELS[
+          d.player === 'A' ? sessions[gameType].agentAModel : sessions[gameType].agentBModel
+        ];
+        updateSession(gameType, { error: `${playerLabel} forfeited: ${d.reason}` });
         break;
       }
     }
   };
 
   const handleMoveSelect = (index: number) => {
-    setCurrentMoveIndex(index);
-    setIsAutoPlaying(false);
+    updateSession(activeGameType, {
+      currentMoveIndex: index,
+      isAutoPlaying: false,
+    });
   };
 
   const handleAutoPlay = () => {
-    if (isAutoPlaying) {
-      setIsAutoPlaying(false);
+    if (session.isAutoPlaying) {
+      updateSession(activeGameType, { isAutoPlaying: false });
     } else {
-      if (currentMoveIndex >= (matchResult?.moves.length ?? 0) - 1) {
-        setCurrentMoveIndex(-1);
+      if (session.currentMoveIndex >= (session.matchResult?.moves.length ?? 0) - 1) {
+        updateSession(activeGameType, { currentMoveIndex: -1 });
       }
-      setIsAutoPlaying(true);
+      updateSession(activeGameType, { isAutoPlaying: true });
     }
   };
 
   const handleReset = () => {
-    setCurrentMoveIndex(-1);
-    setIsAutoPlaying(false);
+    updateSession(activeGameType, {
+      currentMoveIndex: -1,
+      isAutoPlaying: false,
+    });
+  };
+
+  const handleAgentAModelChange = (model: ModelType) => {
+    const defaultVariant = model === 'gpt' ? 'gpt-4o-mini' : model === 'deepseek' ? 'deepseek-chat' : 'gemini-2.0-flash';
+    updateSession(activeGameType, {
+      agentAModel: model,
+      agentAModelVariant: defaultVariant,
+    });
+  };
+
+  const handleAgentBModelChange = (model: ModelType) => {
+    const defaultVariant = model === 'gpt' ? 'gpt-4o-mini' : model === 'deepseek' ? 'deepseek-chat' : 'gemini-2.0-flash';
+    updateSession(activeGameType, {
+      agentBModel: model,
+      agentBModelVariant: defaultVariant,
+    });
   };
 
   // Get current move info for replay
-  const currentMove = matchResult && currentMoveIndex >= 0
-    ? matchResult.moves[currentMoveIndex]
+  const currentMove = session.matchResult && session.currentMoveIndex >= 0
+    ? session.matchResult.moves[session.currentMoveIndex]
     : null;
 
-  const lastMoveA = matchResult?.moves
-    .slice(0, currentMoveIndex + 1)
+  const lastMoveA = session.matchResult?.moves
+    .slice(0, session.currentMoveIndex + 1)
     .filter(m => m.player === 'A')
     .pop() || null;
 
-  const lastMoveB = matchResult?.moves
-    .slice(0, currentMoveIndex + 1)
+  const lastMoveB = session.matchResult?.moves
+    .slice(0, session.currentMoveIndex + 1)
     .filter(m => m.player === 'B')
     .pop() || null;
 
   // Get last move board index for highlighting
   const getLastMoveIndex = (): number | null => {
-    if (isRunning) return lastMoveIdx;
+    if (session.isRunning) return session.lastMoveIdx;
     if (!currentMove) return null;
-    if (gameType === 'ttt') return currentMove.move;
+    if (activeGameType === 'ttt') return currentMove.move;
 
-    // For Connect-4, find the board index
     const col = currentMove.move;
     const boardCopy = [...INITIAL_C4_BOARD];
 
-    for (let i = 0; i < currentMoveIndex; i++) {
-      const move = matchResult!.moves[i];
+    for (let i = 0; i < session.currentMoveIndex; i++) {
+      const move = session.matchResult!.moves[i];
       for (let row = 5; row >= 0; row--) {
         const idx = row * 7 + move.move;
         if (boardCopy[idx] === null) {
@@ -318,7 +401,6 @@ export default function Home() {
       }
     }
 
-    // Find where current move landed
     for (let row = 5; row >= 0; row--) {
       const idx = row * 7 + col;
       if (boardCopy[idx] === null) {
@@ -328,144 +410,176 @@ export default function Home() {
     return null;
   };
 
-  const winLine = !isRunning && currentMoveIndex === (matchResult?.moves.length ?? 0) - 1
-    ? matchResult?.winLine
+  const winLine = !session.isRunning && session.currentMoveIndex === (session.matchResult?.moves.length ?? 0) - 1
+    ? session.matchResult?.winLine
     : null;
 
+  // Check if any game is running
+  const anyGameRunning = sessions.ttt.isRunning || sessions.c4.isRunning;
+
   return (
-    <main className="min-h-screen p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <main className="min-h-screen bg-background">
+      <div className="max-w-[1600px] mx-auto px-4 py-6 lg:px-8">
         {/* Header */}
-        <header className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Agent Arena
-          </h1>
-          <p className="text-slate-400 mt-2">Agentic Compare - uOttaHack 7</p>
-          <div className="mt-2 flex items-center justify-center gap-2 text-sm font-semibold">
-            <span className={agentAStyle.text}>
-              {agentALabel}
-            </span>
-            <span className="text-slate-500">vs</span>
-            <span className={agentBStyle.text}>
-              {agentBLabel}
-            </span>
+        <header className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                Agent Arena
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                LLM Agent Comparison Platform
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <span className={agentAStyle.text}>{PROVIDER_LABELS[session.agentAModel]}</span>
+                <span className="text-muted-foreground">vs</span>
+                <span className={agentBStyle.text}>{PROVIDER_LABELS[session.agentBModel]}</span>
+              </div>
+              {anyGameRunning && (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs text-emerald-400">
+                    {sessions.ttt.isRunning && sessions.c4.isRunning ? 'Both games' : sessions.ttt.isRunning ? 'TTT' : 'C4'} running
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column: Controls & Stats */}
-          <div className="space-y-6">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Sidebar - Controls */}
+          <div className="col-span-12 lg:col-span-3 space-y-4">
             <GameControls
-              gameType={gameType}
-              agentAModel={agentAModel}
-              agentAModelVariant={agentAModelVariant}
-              agentBModel={agentBModel}
-              agentBModelVariant={agentBModelVariant}
-              onGameTypeChange={setGameType}
-              onAgentAModelChange={setAgentAModel}
-              onAgentAModelVariantChange={setAgentAModelVariant}
-              onAgentBModelChange={setAgentBModel}
-              onAgentBModelVariantChange={setAgentBModelVariant}
+              gameType={activeGameType}
+              agentAModel={session.agentAModel}
+              agentAModelVariant={session.agentAModelVariant}
+              agentBModel={session.agentBModel}
+              agentBModelVariant={session.agentBModelVariant}
+              onGameTypeChange={setActiveGameType}
+              onAgentAModelChange={handleAgentAModelChange}
+              onAgentAModelVariantChange={(v) => updateSession(activeGameType, { agentAModelVariant: v })}
+              onAgentBModelChange={handleAgentBModelChange}
+              onAgentBModelVariantChange={(v) => updateSession(activeGameType, { agentBModelVariant: v })}
               onRunMatch={runMatch}
-              isRunning={isRunning}
+              isRunning={session.isRunning}
             />
-
-            <GlobalStats stats={globalStats} />
           </div>
 
-          {/* Center Column: Game Board */}
-          <div className="lg:col-span-1 flex flex-col items-center justify-start">
-            <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
-              <h2 className="text-lg font-bold text-center mb-4">
-                {gameType === 'ttt' ? 'Tic-Tac-Toe' : 'Connect-4'}
-              </h2>
+          {/* Center - Game Board */}
+          <div className="col-span-12 lg:col-span-5">
+            <div className="bg-card rounded-lg border border-border p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium">
+                  {activeGameType === 'ttt' ? 'Tic-Tac-Toe' : 'Connect Four'}
+                </h2>
+                {session.isRunning && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-sm text-muted-foreground">Live</span>
+                  </div>
+                )}
+              </div>
 
-              {gameType === 'ttt' ? (
-                <TicTacToeBoard
-                  board={displayBoard as TTTCell[]}
-                  winLine={winLine ?? null}
-                  lastMove={getLastMoveIndex()}
-                  currentPlayer={currentThinking}
-                  isThinking={isRunning && currentThinking !== null}
-                  playerAClassName={agentAStyle.text}
-                  playerBClassName={agentBStyle.text}
-                />
-              ) : (
-                <Connect4Board
-                  board={displayBoard as C4Cell[]}
-                  winLine={winLine ?? null}
-                  lastMove={getLastMoveIndex()}
-                  currentPlayer={currentThinking}
-                  isThinking={isRunning && currentThinking !== null}
-                  playerAChipClassName={agentAStyle.chip}
-                  playerBChipClassName={agentBStyle.chip}
-                />
+              <div className="flex justify-center">
+                {activeGameType === 'ttt' ? (
+                  <TicTacToeBoard
+                    board={session.displayBoard as TTTCell[]}
+                    winLine={winLine ?? null}
+                    lastMove={getLastMoveIndex()}
+                    currentPlayer={session.currentThinking}
+                    isThinking={session.isRunning && session.currentThinking !== null}
+                    agentAModel={session.agentAModel}
+                    agentBModel={session.agentBModel}
+                  />
+                ) : (
+                  <Connect4Board
+                    board={session.displayBoard as C4Cell[]}
+                    winLine={winLine ?? null}
+                    lastMove={getLastMoveIndex()}
+                    currentPlayer={session.currentThinking}
+                    isThinking={session.isRunning && session.currentThinking !== null}
+                    agentAModel={session.agentAModel}
+                    agentBModel={session.agentBModel}
+                  />
+                )}
+              </div>
+
+              {/* Error Display */}
+              {session.error && (
+                <div className="mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-red-400">
+                  {session.error}
+                </div>
               )}
             </div>
 
-            {/* Live Output - show during and after match */}
-            <div className="w-full mt-4">
+            {/* Live Output */}
+            <div className="mt-4">
               <LiveOutput
-                moves={liveMoves}
-                agentA={{ model: agentAModel, modelVariant: agentAModelVariant }}
-                agentB={{ model: agentBModel, modelVariant: agentBModelVariant }}
-
-                isRunning={isRunning}
-                currentThinking={currentThinking}
-                gameType={gameType}
+                moves={session.liveMoves}
+                agentA={{ model: session.agentAModel, modelVariant: session.agentAModelVariant }}
+                agentB={{ model: session.agentBModel, modelVariant: session.agentBModelVariant }}
+                isRunning={session.isRunning}
+                currentThinking={session.currentThinking}
+                gameType={activeGameType}
               />
             </div>
 
             {/* Replay Controls */}
-            {matchResult && !isRunning && (
-              <div className="w-full mt-4">
+            {session.matchResult && !session.isRunning && (
+              <div className="mt-4">
                 <ReplayControls
-                  moves={matchResult.moves}
-                  currentMoveIndex={currentMoveIndex}
+                  moves={session.matchResult.moves}
+                  currentMoveIndex={session.currentMoveIndex}
                   onMoveSelect={handleMoveSelect}
                   onAutoPlay={handleAutoPlay}
                   onReset={handleReset}
-                  isAutoPlaying={isAutoPlaying}
+                  isAutoPlaying={session.isAutoPlaying}
                 />
-              </div>
-            )}
-
-            {/* Error Display */}
-            {error && (
-              <div className="w-full mt-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-300 text-sm">
-                {error}
               </div>
             )}
           </div>
 
-          {/* Right Column: Agent Panels & Results */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
+          {/* Right Sidebar - Agent Info & Stats */}
+          <div className="col-span-12 lg:col-span-4 space-y-4">
+            {/* Agent Panels */}
+            <div className="grid grid-cols-2 gap-4">
               <AgentPanel
                 label="A"
-                config={{ model: agentAModel, modelVariant: agentAModelVariant }}
-                lastMove={isRunning ? (liveMoves.filter(m => m.player === 'A').pop() as any) : lastMoveA}
-                isActive={isRunning && currentThinking === 'A'}
-                metrics={matchResult?.metrics.agentA}
+                config={{ model: session.agentAModel, modelVariant: session.agentAModelVariant }}
+                lastMove={session.isRunning ? (session.liveMoves.filter(m => m.player === 'A').pop() as any) : lastMoveA}
+                isActive={session.isRunning && session.currentThinking === 'A'}
+                metrics={session.matchResult?.metrics.agentA}
+                isP2={false}
               />
               <AgentPanel
                 label="B"
-                config={{ model: agentBModel, modelVariant: agentBModelVariant }}
-                lastMove={isRunning ? (liveMoves.filter(m => m.player === 'B').pop() as any) : lastMoveB}
-                isActive={isRunning && currentThinking === 'B'}
-                metrics={matchResult?.metrics.agentB}
+                config={{ model: session.agentBModel, modelVariant: session.agentBModelVariant }}
+                lastMove={session.isRunning ? (session.liveMoves.filter(m => m.player === 'B').pop() as any) : lastMoveB}
+                isActive={session.isRunning && session.currentThinking === 'B'}
+                metrics={session.matchResult?.metrics.agentB}
+                isP2={session.agentAModel === session.agentBModel}
               />
             </div>
 
             {/* Match Result */}
-            {matchResult && !isRunning && <MatchResultCard result={matchResult} />}
+            {session.matchResult && !session.isRunning && (
+              <MatchResultCard result={session.matchResult} />
+            )}
+
+            {/* Global Stats */}
+            <GlobalStats stats={globalStats} />
           </div>
         </div>
 
         {/* Footer */}
-        <footer className="mt-12 text-center text-sm text-slate-500">
-          <p>Built for uOttaHack 7 - IT: Agentic Compare Challenge</p>
-          <p className="mt-1">Compare LLM agents across different games and strategies</p>
+        <footer className="mt-12 pt-6 border-t border-border">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <p>uOttaHack 7 - Agentic Compare Challenge</p>
+            <p>Compare LLM agents across different games</p>
+          </div>
         </footer>
       </div>
     </main>

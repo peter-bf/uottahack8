@@ -1,7 +1,7 @@
 'use client';
 
 import { AgentConfig, MoveRecord, GPTModel, DeepSeekModel, GeminiModel } from '@/types';
-import { PROVIDER_LABELS, PROVIDER_STYLES } from '@/lib/ui/providerStyles';
+import { PROVIDER_LABELS, getPlayerStyles } from '@/lib/ui/providerStyles';
 
 // Human-readable model names
 const MODEL_LABELS: Record<GPTModel | DeepSeekModel | GeminiModel, string> = {
@@ -11,6 +11,8 @@ const MODEL_LABELS: Record<GPTModel | DeepSeekModel | GeminiModel, string> = {
   'gpt-3.5-turbo': 'GPT-3.5 Turbo',
   'deepseek-chat': 'DeepSeek Chat',
   'deepseek-reasoner': 'DeepSeek Reasoner',
+  'gemini-2.0-flash': 'Gemini 2.0 Flash',
+  'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
   'gemini-1.5-flash': 'Gemini 1.5 Flash',
   'gemini-1.5-pro': 'Gemini 1.5 Pro',
 };
@@ -20,6 +22,7 @@ interface AgentPanelProps {
   config: AgentConfig;
   lastMove: MoveRecord | null;
   isActive: boolean;
+  isP2: boolean;
   metrics?: {
     invalidJsonCount: number;
     illegalMoveCount: number;
@@ -27,72 +30,62 @@ interface AgentPanelProps {
   };
 }
 
-export function AgentPanel({ label, config, lastMove, isActive, metrics }: AgentPanelProps) {
+export function AgentPanel({ label, config, lastMove, isActive, isP2, metrics }: AgentPanelProps) {
   const providerDisplay = PROVIDER_LABELS[config.model];
   const modelDisplay = MODEL_LABELS[config.modelVariant] || config.modelVariant;
-  const styles = PROVIDER_STYLES[config.model];
-  const colorClass = styles.border;
-  const bgClass = isActive ? styles.bg : 'bg-slate-800';
-  const badgeClass = styles.badge;
+  const styles = getPlayerStyles(config.model, isP2);
 
   return (
-    <div className={`p-4 rounded-lg border-2 ${colorClass} ${bgClass} transition-all duration-300`}>
+    <div className={`p-4 rounded-lg border ${styles.border} ${isActive ? styles.bg : 'bg-card'} transition-all duration-200`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className={`text-lg font-bold ${styles.text}`}>
-          {providerDisplay}
+        <div className="flex items-center gap-2">
+          <h3 className={`text-sm font-semibold ${styles.text}`}>
+            {providerDisplay}
+          </h3>
           {isActive && (
-            <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           )}
-        </h3>
-        <span className={`px-2 py-1 rounded text-xs font-medium ${badgeClass}`}>
-          {label === 'A' ? 'X / P1' : 'O / P2'}
+        </div>
+        <span className={`px-2 py-0.5 rounded text-xs font-medium ${styles.badge}`}>
+          {label === 'A' ? 'P1' : 'P2'}
         </span>
       </div>
 
-      <div className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-slate-400">Model:</span>
-          <span className="font-medium">{modelDisplay}</span>
-        </div>
+      <div className="text-xs text-muted-foreground mb-3">
+        {modelDisplay}
       </div>
 
       {lastMove && (
-        <div className="mt-4 pt-4 border-t border-slate-600">
-          <div className="text-xs text-slate-400 mb-1">Last Move</div>
-          <div className="font-mono text-lg text-white">Position: {lastMove.move}</div>
+        <div className="pt-3 border-t border-border">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">Last move</span>
+            <span className="font-mono text-sm">{lastMove.move}</span>
+          </div>
           {lastMove.reason && (
-            <p className="text-sm text-slate-300 mt-2 italic">"{lastMove.reason}"</p>
-          )}
-          {lastMove.plan && lastMove.plan.length > 0 && (
-            <div className="mt-2">
-              <div className="text-xs text-slate-400 mb-1">Plan:</div>
-              <ul className="text-xs text-slate-300 list-disc list-inside">
-                {lastMove.plan.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            </div>
+            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+              {lastMove.reason}
+            </p>
           )}
         </div>
       )}
 
       {metrics && (
-        <div className="mt-4 pt-4 border-t border-slate-600 grid grid-cols-3 gap-2 text-xs">
+        <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-1 text-xs">
           <div className="text-center">
-            <div className="text-slate-400">Invalid JSON</div>
-            <div className={`font-bold ${metrics.invalidJsonCount > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+            <div className="text-muted-foreground mb-1">JSON</div>
+            <div className={`font-mono ${metrics.invalidJsonCount > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
               {metrics.invalidJsonCount}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-slate-400">Illegal Moves</div>
-            <div className={`font-bold ${metrics.illegalMoveCount > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+            <div className="text-muted-foreground mb-1">Illegal</div>
+            <div className={`font-mono ${metrics.illegalMoveCount > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
               {metrics.illegalMoveCount}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-slate-400">Retries</div>
-            <div className={`font-bold ${metrics.retryCount > 0 ? 'text-yellow-400' : 'text-green-400'}`}>
+            <div className="text-muted-foreground mb-1">Retry</div>
+            <div className={`font-mono ${metrics.retryCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
               {metrics.retryCount}
             </div>
           </div>

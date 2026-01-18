@@ -7,7 +7,7 @@ export type Winner = 'A' | 'B' | 'draw';
 // Model variants
 export type GPTModel = 'gpt-4o-mini' | 'gpt-4o' | 'gpt-4-turbo' | 'gpt-3.5-turbo';
 export type DeepSeekModel = 'deepseek-chat' | 'deepseek-reasoner';
-export type GeminiModel = 'gemini-1.5-flash' | 'gemini-1.5-pro';
+export type GeminiModel = 'gemini-2.0-flash' | 'gemini-2.0-flash-lite' | 'gemini-1.5-flash' | 'gemini-1.5-pro';
 
 // Tic-Tac-Toe: 0-8 index, Connect-4: 0-6 column
 export type Move = number;

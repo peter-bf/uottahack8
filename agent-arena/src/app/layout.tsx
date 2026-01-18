@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
-  title: 'Agent Arena - Agentic Compare',
-  description: 'Pit LLM agents against each other in classic games. Compare OpenAI, DeepSeek, and Gemini with different strategies.',
+  title: 'Agent Arena',
+  description: 'LLM Agent Comparison Platform - Compare OpenAI, DeepSeek, and Gemini agents in strategic games',
 };
 
 export default function RootLayout({
@@ -15,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} antialiased`}>{children}</body>
     </html>
   );
 }

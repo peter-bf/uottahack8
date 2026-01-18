@@ -1,7 +1,8 @@
 'use client';
 
 import { MatchResult } from '@/types';
-import { PROVIDER_LABELS, PROVIDER_STYLES } from '@/lib/ui/providerStyles';
+import { PROVIDER_LABELS, getPlayerStyles } from '@/lib/ui/providerStyles';
+import { Clock, Hash, AlertCircle } from 'lucide-react';
 
 interface MatchResultCardProps {
   result: MatchResult;
@@ -12,49 +13,53 @@ export function MatchResultCard({ result }: MatchResultCardProps) {
     ? null
     : (result.winner === 'A' ? result.agentA.model : result.agentB.model);
   const winnerText = result.winner === 'draw'
-    ? 'Draw!'
-    : `${PROVIDER_LABELS[winnerModel!]} Wins!`;
-  const winnerColor = result.winner === 'draw'
-    ? 'text-amber-400'
-    : PROVIDER_STYLES[winnerModel!].text;
-  const agentALabel = PROVIDER_LABELS[result.agentA.model];
-  const agentBLabel = PROVIDER_LABELS[result.agentB.model];
-  const agentAColor = PROVIDER_STYLES[result.agentA.model].text;
-  const agentBColor = PROVIDER_STYLES[result.agentB.model].text;
+    ? 'Draw'
+    : `${PROVIDER_LABELS[winnerModel!]} wins`;
+
+  const agentAStyle = getPlayerStyles(result.agentA.model, false);
+  const agentBStyle = getPlayerStyles(result.agentB.model, result.agentA.model === result.agentB.model);
 
   return (
-    <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-      <div className="text-center mb-6">
-        <h3 className={`text-2xl font-bold ${winnerColor}`}>
-          {winnerText}
-        </h3>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        <div className="bg-slate-700 rounded-lg p-3">
-          <div className="text-xs text-slate-400 mb-1">Total Moves</div>
-          <div className="text-xl font-bold">{result.metrics.totalMoves}</div>
-        </div>
-        <div className="bg-slate-700 rounded-lg p-3">
-          <div className="text-xs text-slate-400 mb-1">Duration</div>
-          <div className="text-xl font-bold">{(result.metrics.durationMs / 1000).toFixed(1)}s</div>
-        </div>
-        <div className="bg-slate-700 rounded-lg p-3">
-          <div className="text-xs text-slate-400 mb-1">{agentALabel} Errors</div>
-          <div className={`text-xl font-bold ${agentAColor}`}>
-            {result.metrics.agentA.invalidJsonCount + result.metrics.agentA.illegalMoveCount}
-          </div>
-        </div>
-        <div className="bg-slate-700 rounded-lg p-3">
-          <div className="text-xs text-slate-400 mb-1">{agentBLabel} Errors</div>
-          <div className={`text-xl font-bold ${agentBColor}`}>
-            {result.metrics.agentB.invalidJsonCount + result.metrics.agentB.illegalMoveCount}
-          </div>
+    <div className="bg-card rounded-lg border border-border">
+      <div className="p-4 border-b border-border">
+        <div className="text-center">
+          <span className={`text-sm font-semibold ${
+            result.winner === 'draw'
+              ? 'text-muted-foreground'
+              : result.winner === 'A' ? agentAStyle.text : agentBStyle.text
+          }`}>
+            {winnerText}
+          </span>
         </div>
       </div>
 
-      <div className="mt-4 text-xs text-slate-500 text-center">
-        Match ID: {result.id.slice(0, 8)}... | {new Date(result.createdAt).toLocaleString()}
+      <div className="p-4">
+        <div className="grid grid-cols-3 gap-4 text-center text-xs">
+          <div>
+            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+              <Hash className="w-3 h-3" />
+              Moves
+            </div>
+            <div className="font-mono font-semibold">{result.metrics.totalMoves}</div>
+          </div>
+          <div>
+            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+              <Clock className="w-3 h-3" />
+              Time
+            </div>
+            <div className="font-mono font-semibold">{(result.metrics.durationMs / 1000).toFixed(1)}s</div>
+          </div>
+          <div>
+            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+              <AlertCircle className="w-3 h-3" />
+              Errors
+            </div>
+            <div className="font-mono font-semibold">
+              {result.metrics.agentA.invalidJsonCount + result.metrics.agentA.illegalMoveCount +
+               result.metrics.agentB.invalidJsonCount + result.metrics.agentB.illegalMoveCount}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

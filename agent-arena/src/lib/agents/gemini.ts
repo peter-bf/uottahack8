@@ -1,6 +1,6 @@
 import { AgentResponse, GeminiModel } from '@/types';
 
-const DEFAULT_MODEL: GeminiModel = 'gemini-1.5-flash';
+const DEFAULT_MODEL: GeminiModel = 'gemini-2.0-flash';
 
 function getApiKey(): string {
   const apiKey = process.env.GEMINI_API_KEY;

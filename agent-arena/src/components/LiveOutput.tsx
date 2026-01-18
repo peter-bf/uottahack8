@@ -1,7 +1,8 @@
 'use client';
 
 import { AgentConfig, GPTModel, DeepSeekModel, GeminiModel } from '@/types';
-import { PROVIDER_STYLES } from '@/lib/ui/providerStyles';
+import { getPlayerStyles } from '@/lib/ui/providerStyles';
+import { Radio } from 'lucide-react';
 
 // Human-readable model names
 const MODEL_LABELS: Record<GPTModel | DeepSeekModel | GeminiModel, string> = {
@@ -11,6 +12,8 @@ const MODEL_LABELS: Record<GPTModel | DeepSeekModel | GeminiModel, string> = {
   'gpt-3.5-turbo': 'GPT-3.5 Turbo',
   'deepseek-chat': 'DeepSeek Chat',
   'deepseek-reasoner': 'DeepSeek Reasoner',
+  'gemini-2.0-flash': 'Gemini 2.0 Flash',
+  'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
   'gemini-1.5-flash': 'Gemini 1.5 Flash',
   'gemini-1.5-pro': 'Gemini 1.5 Pro',
 };
@@ -35,80 +38,68 @@ interface LiveOutputProps {
 export function LiveOutput({ moves, agentA, agentB, isRunning, currentThinking, gameType }: LiveOutputProps) {
   const formatMove = (move: number) => {
     if (gameType === 'ttt') {
-      const row = Math.floor(move / 3);
-      const col = move % 3;
-      return `[${row},${col}]`;
+      return `pos ${move}`;
     }
     return `col ${move}`;
   };
 
+  const agentAStyle = getPlayerStyles(agentA.model, false);
+  const agentBStyle = getPlayerStyles(agentB.model, agentA.model === agentB.model);
+
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`} />
-          Live Output
+    <div className="bg-card rounded-lg border border-border">
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <Radio className={`w-4 h-4 ${isRunning ? 'text-emerald-400' : 'text-muted-foreground'}`} />
+          Move Log
         </h3>
-        {isRunning && (
-          <span className="text-xs text-slate-400">
-            {moves.length} move{moves.length !== 1 ? 's' : ''}
-          </span>
-        )}
+        <span className="text-xs text-muted-foreground font-mono">
+          {moves.length} moves
+        </span>
       </div>
 
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+      <div className="p-4 space-y-2 max-h-48 overflow-y-auto">
         {moves.length === 0 && !isRunning && (
-          <p className="text-sm text-slate-500 italic">No moves yet. Click "Run Single Match" to start.</p>
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Start a match to see moves
+          </p>
         )}
 
         {moves.map((move, index) => {
           const isAgentA = move.player === 'A';
-          const config = isAgentA ? agentA : agentB;
-          const styles = PROVIDER_STYLES[config.model];
+          const styles = isAgentA ? agentAStyle : agentBStyle;
           const modelLabel = MODEL_LABELS[move.modelVariant] || move.modelVariant;
-          const playerSymbol = gameType === 'ttt'
-            ? (isAgentA ? 'X' : 'O')
-            : (isAgentA ? 'P1' : 'P2');
 
           return (
             <div
               key={index}
-              className={`p-2 rounded text-sm animate-fade-in ${styles.bg} border-l-2 ${styles.border}`}
+              className={`flex items-center justify-between p-2 rounded-md text-xs animate-fade-in ${styles.bg} border-l-2 ${styles.border}`}
             >
-              <div className="flex items-center justify-between">
-                <span className={`font-medium ${styles.text}`}>
-                  {modelLabel} ({playerSymbol})
-                </span>
-                <span className="text-slate-400 font-mono">
-                  -&gt; {formatMove(move.move)}
-                </span>
-              </div>
-              {move.reason && (
-                <p className="text-xs text-slate-400 mt-1 italic truncate">
-                  "{move.reason}"
-                </p>
-              )}
+              <span className={`font-medium ${styles.text}`}>
+                {modelLabel}
+              </span>
+              <span className="text-muted-foreground font-mono">
+                {formatMove(move.move)}
+              </span>
             </div>
           );
         })}
 
         {isRunning && currentThinking && (
-          <div className={`p-2 rounded text-sm ${
-            PROVIDER_STYLES[currentThinking === 'A' ? agentA.model : agentB.model].bg
+          <div className={`flex items-center justify-between p-2 rounded-md text-xs ${
+            currentThinking === 'A' ? agentAStyle.bg : agentBStyle.bg
           } border-l-2 ${
-            PROVIDER_STYLES[currentThinking === 'A' ? agentA.model : agentB.model].border
+            currentThinking === 'A' ? agentAStyle.border : agentBStyle.border
           }`}>
-            <div className="flex items-center gap-2">
-              <span className={`font-medium ${
-                PROVIDER_STYLES[currentThinking === 'A' ? agentA.model : agentB.model].text
-              }`}>
-                {MODEL_LABELS[currentThinking === 'A' ? agentA.modelVariant : agentB.modelVariant]}
-              </span>
-              <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
+            <span className={`font-medium ${
+              currentThinking === 'A' ? agentAStyle.text : agentBStyle.text
+            }`}>
+              {MODEL_LABELS[currentThinking === 'A' ? agentA.modelVariant : agentB.modelVariant]}
+            </span>
+            <div className="flex gap-1">
+              <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           </div>
         )}
