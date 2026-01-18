@@ -5,7 +5,7 @@ import { saveMatch } from '@/lib/db';
 
 const VALID_GPT_MODELS: GPTModel[] = ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 const VALID_DEEPSEEK_MODELS: DeepSeekModel[] = ['deepseek-chat', 'deepseek-reasoner'];
-const VALID_GEMINI_MODELS: GeminiModel[] = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+const VALID_GEMINI_MODELS: GeminiModel[] = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
 function isValidGameType(val: unknown): val is GameType {
   return val === 'ttt' || val === 'c4';

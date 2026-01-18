@@ -37,6 +37,9 @@ export interface MoveRecord {
   reason?: string;
   plan?: string[];
   timestamp: number;
+  durationMs?: number;
+  retries?: number;
+  hadError?: boolean;
 }
 
 export interface AgentMetrics {

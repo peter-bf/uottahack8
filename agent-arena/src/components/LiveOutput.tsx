@@ -2,7 +2,7 @@
 
 import { AgentConfig, GPTModel, DeepSeekModel, GeminiModel } from '@/types';
 import { getPlayerStyles } from '@/lib/ui/providerStyles';
-import { Radio } from 'lucide-react';
+import { Radio, X, RotateCcw } from 'lucide-react';
 
 // Human-readable model names
 const MODEL_LABELS: Record<GPTModel | DeepSeekModel | GeminiModel, string> = {
@@ -24,6 +24,9 @@ export interface LiveMove {
   reason?: string;
   modelVariant: GPTModel | DeepSeekModel | GeminiModel;
   timestamp: number;
+  durationMs?: number;
+  retries?: number;
+  hadError?: boolean;
 }
 
 interface LiveOutputProps {
@@ -41,6 +44,11 @@ export function LiveOutput({ moves, agentA, agentB, isRunning, currentThinking, 
       return `pos ${move}`;
     }
     return `col ${move}`;
+  };
+
+  const formatDuration = (ms?: number) => {
+    if (!ms) return '';
+    return `${(ms / 1000).toFixed(1)}s`;
   };
 
   const agentAStyle = getPlayerStyles(agentA.model, false);
@@ -73,14 +81,32 @@ export function LiveOutput({ moves, agentA, agentB, isRunning, currentThinking, 
           return (
             <div
               key={index}
-              className={`flex items-center justify-between p-2 rounded-md text-xs animate-fade-in ${styles.bg} border-l-2 ${styles.border}`}
+              className={`flex items-center justify-between p-2 rounded-md text-xs animate-fade-in ${styles.bg} border-l-2 ${move.hadError ? 'border-red-500' : styles.border}`}
             >
-              <span className={`font-medium ${styles.text}`}>
-                {modelLabel}
-              </span>
-              <span className="text-muted-foreground font-mono">
-                {formatMove(move.move)}
-              </span>
+              <div className="flex items-center gap-2">
+                {move.hadError && (
+                  <X className="w-3 h-3 text-red-500" />
+                )}
+                {move.retries && move.retries > 0 && (
+                  <span className="flex items-center gap-0.5 text-amber-500" title={`${move.retries} retries`}>
+                    <RotateCcw className="w-3 h-3" />
+                    <span>{move.retries}</span>
+                  </span>
+                )}
+                <span className={`font-medium ${styles.text}`}>
+                  {modelLabel}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                {move.durationMs && (
+                  <span className="text-muted-foreground">
+                    {formatDuration(move.durationMs)}
+                  </span>
+                )}
+                <span className="text-muted-foreground font-mono">
+                  {formatMove(move.move)}
+                </span>
+              </div>
             </div>
           );
         })}

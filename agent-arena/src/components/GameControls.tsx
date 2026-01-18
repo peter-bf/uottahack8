@@ -2,7 +2,7 @@
 
 import { GameType, ModelType, GPTModel, DeepSeekModel, GeminiModel } from '@/types';
 import { PROVIDER_LABELS, getPlayerStyles } from '@/lib/ui/providerStyles';
-import { Play, Loader2 } from 'lucide-react';
+import { Play, Loader2, Lock } from 'lucide-react';
 
 // Model variant options
 const GPT_MODELS: { value: GPTModel; label: string }[] = [
@@ -74,8 +74,11 @@ export function GameControls({
         <label className="block text-xs text-muted-foreground mb-2 uppercase tracking-wider">Game</label>
         <div className="flex gap-2">
           <button
-            onClick={() => onGameTypeChange('ttt')}
+            onClick={() => !isRunning && onGameTypeChange('ttt')}
+            disabled={isRunning}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+              isRunning ? 'opacity-50 cursor-not-allowed' : ''
+            } ${
               gameType === 'ttt'
                 ? 'bg-secondary text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
@@ -84,8 +87,11 @@ export function GameControls({
             Tic-Tac-Toe
           </button>
           <button
-            onClick={() => onGameTypeChange('c4')}
+            onClick={() => !isRunning && onGameTypeChange('c4')}
+            disabled={isRunning}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+              isRunning ? 'opacity-50 cursor-not-allowed' : ''
+            } ${
               gameType === 'c4'
                 ? 'bg-secondary text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
@@ -97,14 +103,18 @@ export function GameControls({
       </div>
 
       {/* Agent A Configuration */}
-      <div className="p-4 border-b border-border">
+      <div className={`p-4 border-b border-border ${isRunning ? 'opacity-50' : ''}`}>
         <div className="flex items-center justify-between mb-3">
-          <label className="text-xs text-muted-foreground uppercase tracking-wider">Player 1</label>
+          <label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+            Player 1
+            {isRunning && <Lock className="w-3 h-3" />}
+          </label>
           <span className={`text-xs font-medium ${agentAStyle.text}`}>{PROVIDER_LABELS[agentAModel]}</span>
         </div>
         <div className="space-y-2">
           <select
             value={agentAModel}
+            disabled={isRunning}
             onChange={(e) => {
               const newModel = e.target.value as ModelType;
               onAgentAModelChange(newModel);
@@ -112,7 +122,9 @@ export function GameControls({
                 newModel === 'gpt' ? 'gpt-4o-mini' : newModel === 'deepseek' ? 'deepseek-chat' : 'gemini-2.0-flash'
               );
             }}
-            className="w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring"
+            className={`w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring ${
+              isRunning ? 'cursor-not-allowed' : ''
+            }`}
           >
             <option value="gpt">OpenAI</option>
             <option value="deepseek">DeepSeek</option>
@@ -120,8 +132,11 @@ export function GameControls({
           </select>
           <select
             value={agentAModelVariant}
+            disabled={isRunning}
             onChange={(e) => onAgentAModelVariantChange(e.target.value as GPTModel | DeepSeekModel | GeminiModel)}
-            className="w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring"
+            className={`w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring ${
+              isRunning ? 'cursor-not-allowed' : ''
+            }`}
           >
             {agentAModels.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -131,14 +146,18 @@ export function GameControls({
       </div>
 
       {/* Agent B Configuration */}
-      <div className="p-4 border-b border-border">
+      <div className={`p-4 border-b border-border ${isRunning ? 'opacity-50' : ''}`}>
         <div className="flex items-center justify-between mb-3">
-          <label className="text-xs text-muted-foreground uppercase tracking-wider">Player 2</label>
+          <label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+            Player 2
+            {isRunning && <Lock className="w-3 h-3" />}
+          </label>
           <span className={`text-xs font-medium ${agentBStyle.text}`}>{PROVIDER_LABELS[agentBModel]}</span>
         </div>
         <div className="space-y-2">
           <select
             value={agentBModel}
+            disabled={isRunning}
             onChange={(e) => {
               const newModel = e.target.value as ModelType;
               onAgentBModelChange(newModel);
@@ -146,7 +165,9 @@ export function GameControls({
                 newModel === 'gpt' ? 'gpt-4o-mini' : newModel === 'deepseek' ? 'deepseek-chat' : 'gemini-2.0-flash'
               );
             }}
-            className="w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring"
+            className={`w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring ${
+              isRunning ? 'cursor-not-allowed' : ''
+            }`}
           >
             <option value="gpt">OpenAI</option>
             <option value="deepseek">DeepSeek</option>
@@ -154,8 +175,11 @@ export function GameControls({
           </select>
           <select
             value={agentBModelVariant}
+            disabled={isRunning}
             onChange={(e) => onAgentBModelVariantChange(e.target.value as GPTModel | DeepSeekModel | GeminiModel)}
-            className="w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring"
+            className={`w-full bg-secondary border-0 rounded-md px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring ${
+              isRunning ? 'cursor-not-allowed' : ''
+            }`}
           >
             {agentBModels.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>

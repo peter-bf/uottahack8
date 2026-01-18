@@ -21,7 +21,7 @@ import { saveMatch } from '@/lib/db';
 
 const VALID_GPT_MODELS: GPTModel[] = ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 const VALID_DEEPSEEK_MODELS: DeepSeekModel[] = ['deepseek-chat', 'deepseek-reasoner'];
-const VALID_GEMINI_MODELS: GeminiModel[] = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+const VALID_GEMINI_MODELS: GeminiModel[] = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 const MAX_MOVES = 100;
 
 function isValidGameType(val: unknown): val is GameType {
@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
           // Send thinking event
           send('thinking', { player: currentPlayer, modelVariant: agent.modelVariant });
 
-          // Call agent
+          // Call agent and track duration
+          const moveStartTime = Date.now();
           const result = await callAgent(
             agent.model,
             agent.modelVariant,
@@ -111,10 +112,14 @@ export async function POST(request: NextRequest) {
             currentPlayer,
             legalMoves
           );
+          const moveDurationMs = Date.now() - moveStartTime;
 
           metrics.invalidJsonCount += result.invalidJsonCount;
           metrics.illegalMoveCount += result.illegalMoveCount;
           metrics.retryCount += result.retryCount;
+
+          const moveHadError = result.retryCount > 0 || result.invalidJsonCount > 0 || result.illegalMoveCount > 0;
+          const moveRetries = result.retryCount;
 
           if (result.forfeit) {
             forfeitedBy = currentPlayer;
@@ -138,6 +143,9 @@ export async function POST(request: NextRequest) {
             reason: result.response!.reason,
             plan: result.response!.plan,
             timestamp: Date.now(),
+            durationMs: moveDurationMs,
+            retries: moveRetries,
+            hadError: moveHadError,
           };
           moves.push(moveRecord);
 
@@ -152,6 +160,9 @@ export async function POST(request: NextRequest) {
             winLine: applyResult.newState.winLine,
             isTerminal: applyResult.newState.isTerminal,
             winner: applyResult.newState.winner,
+            durationMs: moveDurationMs,
+            retries: moveRetries,
+            hadError: moveHadError,
           });
 
           state = applyResult.newState;

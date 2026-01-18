@@ -261,6 +261,9 @@ export default function Home() {
           reason?: string;
           modelVariant: GPTModel | DeepSeekModel | GeminiModel;
           board: (TTTCell | C4Cell)[];
+          durationMs?: number;
+          retries?: number;
+          hadError?: boolean;
         };
 
         const newMove: LiveMove = {
@@ -269,6 +272,9 @@ export default function Home() {
           reason: d.reason,
           modelVariant: d.modelVariant,
           timestamp: Date.now(),
+          durationMs: d.durationMs,
+          retries: d.retries,
+          hadError: d.hadError,
         };
 
         let lastMoveIdx = d.move;
@@ -553,6 +559,7 @@ export default function Home() {
                 isActive={session.isRunning && session.currentThinking === 'A'}
                 metrics={session.matchResult?.metrics.agentA}
                 isP2={false}
+                isWinner={!session.isRunning && session.matchResult?.winner === 'A'}
               />
               <AgentPanel
                 label="B"
@@ -561,6 +568,7 @@ export default function Home() {
                 isActive={session.isRunning && session.currentThinking === 'B'}
                 metrics={session.matchResult?.metrics.agentB}
                 isP2={session.agentAModel === session.agentBModel}
+                isWinner={!session.isRunning && session.matchResult?.winner === 'B'}
               />
             </div>
 
