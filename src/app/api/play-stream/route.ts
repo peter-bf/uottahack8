@@ -129,7 +129,27 @@ export async function POST(request: NextRequest) {
             ? getC4LegalMoves(state.board as C4Cell[])
             : getBSLegalMoves(state, currentPlayer);
 
-          if (legalMoves.length === 0) break;
+          // For Battleship, we should NEVER have 0 legal moves unless something is wrong
+          // Each player can fire at 100 cells independently, and game ends when all ships are sunk
+          if (legalMoves.length === 0) {
+            if (gameType === 'bs') {
+              // This shouldn't happen in Battleship - log and continue to prevent draw
+              console.error('Battleship: No legal moves but game not terminal. State:', {
+                firedA: state.firedA?.size,
+                firedB: state.firedB?.size,
+                currentPlayer,
+                isTerminal: state.isTerminal,
+              });
+              // Force check if game should be over
+              const totalHealthA = Object.values(state.shipHealthA || {}).reduce((sum: number, h: number) => sum + h, 0);
+              const totalHealthB = Object.values(state.shipHealthB || {}).reduce((sum: number, h: number) => sum + h, 0);
+              if (totalHealthA === 0 || totalHealthB === 0) {
+                state.isTerminal = true;
+                state.winner = totalHealthA === 0 ? 'B' : 'A';
+              }
+            }
+            break;
+          }
 
           // Send thinking event
           send('thinking', { player: currentPlayer, modelVariant: agent.modelVariant });

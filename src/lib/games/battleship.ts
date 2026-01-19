@@ -336,7 +336,12 @@ export function getBSBoardForPrompt(
   player: Player,
   legalMoves: number[]
 ): string {
-  const board = state.board as BSCell[];
+  // CRITICAL: Each player must see their OWN attack board
+  // Player A attacks B's ships, so A sees boardB (their shots at B)
+  // Player B attacks A's ships, so B sees boardA (their shots at A)
+  const board = player === 'A'
+    ? (state.boardB || Array(TOTAL_CELLS).fill('unknown')) as BSCell[]
+    : (state.boardA || Array(TOTAL_CELLS).fill('unknown')) as BSCell[];
   const sunkShips = getSunkShips(state, player);
   const remainingShips = getRemainingShips(state, player);
 

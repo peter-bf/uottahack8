@@ -66,11 +66,18 @@ export async function runMatch(
       legalMoves = getBSLegalMoves(state, currentPlayer);
     }
 
+    // For Battleship, we should NEVER have 0 legal moves unless something is wrong
     if (legalMoves.length === 0) {
-      // No legal moves - for Battleship, shouldn't happen. For TTT/C4, it's a draw
-      if (gameType !== 'bs') {
-        break;
+      if (gameType === 'bs') {
+        // Force check if game should be over
+        const totalHealthA = Object.values(state.shipHealthA || {}).reduce((sum, h) => sum + h, 0);
+        const totalHealthB = Object.values(state.shipHealthB || {}).reduce((sum, h) => sum + h, 0);
+        if (totalHealthA === 0 || totalHealthB === 0) {
+          state.isTerminal = true;
+          state.winner = totalHealthA === 0 ? 'B' : 'A';
+        }
       }
+      break;
     }
 
     // Call agent
